@@ -1,0 +1,2 @@
+import {NextResponse} from 'next/server';import {stripe} from '@/lib/stripe';
+export async function POST(req:Request){if(!stripe)return NextResponse.json({error:'Stripe is not configured.'},{status:503});const {customerId}=await req.json();if(!customerId)return NextResponse.json({error:'Missing customer.'},{status:400});const session=await stripe.billingPortal.sessions.create({customer:customerId,return_url:`${process.env.NEXT_PUBLIC_APP_URL||new URL(req.url).origin}/dashboard`});return NextResponse.json({url:session.url});}

@@ -1,0 +1,10 @@
+import QRCreator from '@/components/qr-creator';
+import GrowthBlueprints from '@/components/growth-blueprints';
+import { createClient } from '@/lib/supabase/server';
+
+export default async function Dashboard(){
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: codes } = await supabase.from('qr_codes').select('id,name,qr_type,status,slug,scan_count,created_at').order('created_at',{ascending:false}).limit(6);
+  const totalScans = (codes ?? []).reduce((sum,c)=>sum+(c.scan_count ?? 0),0);
+  return <div className="shell"><aside className="sidebar"><a className="brand" href="/">QRCommand</a><a className="sideitem active">Overview</a><a className="sideitem" href="/dashboard/qr-codes">QR library</a><a className="sideitem">Analytics</a><a className="sideitem">Growth Blueprints</a><a className="sideitem">Restaurant hub</a><a className="sideitem">Team</a><a className="sideitem">Locations</a><a className="sideitem">Billing</a><form action="/auth/signout" method="post"><button className="sideitem signout">Sign out</button></form></aside><main className="main"><div className="toprow"><div><div className="eyebrow">{user?.email}</div><h1>Command dashboard</h1></div><span className="pill">FOUNDING WORKSPACE</span></div><div className="stats">{[['Total scans',String(totalScans)],['Live QR codes',String(codes?.length ?? 0)],['Growth campaigns','3'],['Optimization score','72%']].map(x=><article className="card stat" key={x[0]}><span>{x[0]}</span><b>{x[1]}</b></article>)}</div><GrowthBlueprints/><QRCreator/><section className="card table"><div className="row head"><span>Code</span><span>Type</span><span>Scans</span><span>Status</span></div>{(codes?.length?codes:[{id:'demo',name:'Create your first campaign',qr_type:'Growth Blueprint',scan_count:0,status:'Ready',slug:''}]).map(x=><div className="row" key={x.id}><b>{x.name}</b><span>{x.qr_type}</span><span>{x.scan_count ?? 0}</span><span className="pill">{x.status}</span></div>)}</section></main></div>}
