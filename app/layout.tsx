@@ -1,4 +1,12 @@
+import type { Metadata } from 'next';
 import './globals.css';
-import Link from 'next/link';
-export const metadata={title:'QR Command — Smart QR Infrastructure',description:'Create, manage and measure dynamic QR experiences.'};
-export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="en"><body><nav className="nav"><div className="container navin"><Link className="logo" href="/">QR<span>Command</span></Link><div className="links"><Link href="/#features">Features</Link><Link href="/pricing">Pricing</Link><Link href="/login">Sign in</Link><Link className="btn" href="/dashboard">Open dashboard</Link></div></div></nav>{children}</body></html>}
+import SiteNav from '@/components/site-nav';
+
+export const metadata: Metadata = {
+  title: { default: 'QR Command | Business Optimization Through Every Scan', template: '%s | QR Command' },
+  description: 'Create permanent dynamic QR campaigns, connect locations, measure real scan activity, and operate growth workflows from one business command center.',
+};
+
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  return <html lang="en"><body><SiteNav />{children}</body></html>;
+}

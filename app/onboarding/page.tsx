@@ -1,0 +1,15 @@
+import { redirect } from 'next/navigation';
+import OnboardingForm from '@/components/onboarding-form';
+import { createClient } from '@/lib/supabase/server';
+import { getWorkspaceContext } from '@/lib/workspace';
+
+export default async function OnboardingPage() {
+  const supabase = await createClient();
+  const context = await getWorkspaceContext(supabase);
+  if ('error' in context) redirect('/login?next=/onboarding');
+  if (context.organization.onboarding_completed_at) redirect('/dashboard');
+  if (context.organization.role !== 'owner') {
+    return <main className="onboarding-page"><section className="card"><div className="eyebrow">Workspace setup</div><h1>The workspace owner needs to finish setup.</h1><p className="muted">Once onboarding is complete, refresh this page to enter the dashboard.</p></section></main>;
+  }
+  return <main className="onboarding-page"><section className="onboarding-copy"><div className="eyebrow">Welcome to QR Command</div><h1>Build the operating layer behind every scan.</h1><p>Start with your business identity and first location. You can create a dynamic campaign in the next step.</p><div className="onboarding-points"><span>Permanent, editable QR destinations</span><span>Real scan and location analytics</span><span>Growth systems that scale with your plan</span></div></section><OnboardingForm defaultName={context.organization.name} /></main>;
+}

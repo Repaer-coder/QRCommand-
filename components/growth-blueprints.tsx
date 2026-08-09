@@ -1,6 +1,11 @@
-const blueprints = [
-  {name:'Restaurant Revenue Loop', audience:'Restaurants', outcome:'Menu → order → review → loyalty', items:['Table-specific menu','Featured-item campaign','Google review follow-up','Return-visit reward']},
-  {name:'Local Reputation Engine', audience:'Local businesses', outcome:'Visit → review → referral', items:['Review smart link','Negative-feedback intercept','Referral reward','Location analytics']},
-  {name:'Social Conversion Hub', audience:'Creators & brands', outcome:'Scan → follow → purchase', items:['Smart social page','Product spotlight','Retargeting campaign','Conversion tracking']},
-];
-export default function GrowthBlueprints(){return <section><div className="sectionhead"><div><div className="eyebrow">Differentiated layer</div><h2>Growth Blueprints</h2></div><span className="pill">QR + BUSINESS OUTCOMES</span></div><div className="blueprints">{blueprints.map(b=><article className="card blueprint" key={b.name}><span className="pill">{b.audience}</span><h3>{b.name}</h3><strong>{b.outcome}</strong><ul>{b.items.map(i=><li key={i}>{i}</li>)}</ul><button className="btn secondary">Use blueprint</button></article>)}</div></section>}
+import Link from 'next/link';
+
+export const blueprintTemplates = [
+  { key: 'restaurant-revenue-loop', name: 'Restaurant Revenue Loop', audience: 'Restaurants', outcome: 'Menu to order to review to loyalty', items: ['Table-specific menus', 'Featured-item campaign', 'Review follow-up', 'Return-visit reward'] },
+  { key: 'local-reputation-engine', name: 'Local Reputation Engine', audience: 'Local business', outcome: 'Visit to review to referral', items: ['Review smart link', 'Private feedback path', 'Referral prompt', 'Location comparison'] },
+  { key: 'social-conversion-hub', name: 'Social Conversion Hub', audience: 'Brands and creators', outcome: 'Scan to follow to action', items: ['Social destination', 'Product spotlight', 'Offer campaign', 'Engagement tracking'] },
+] as const;
+
+export default function GrowthBlueprints() {
+  return <section className="module-section"><div className="sectionhead"><div><div className="eyebrow">Premium growth systems</div><h2>Blueprints built around business outcomes</h2></div><Link className="textlink" href="/dashboard/blueprints">View all blueprints</Link></div><div className="blueprints">{blueprintTemplates.map((blueprint) => <article className="card blueprint" key={blueprint.key}><span className="pill">{blueprint.audience}</span><h3>{blueprint.name}</h3><strong>{blueprint.outcome}</strong><ul>{blueprint.items.map((item) => <li key={item}>{item}</li>)}</ul><Link className="btn secondary" href="/dashboard/blueprints">Configure blueprint</Link></article>)}</div></section>;
+}

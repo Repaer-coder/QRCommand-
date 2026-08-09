@@ -1,0 +1,1 @@
+export default function DashboardLoading() { return <main className="main"><div className="eyebrow">QR Command</div><h1>Loading workspace...</h1><section className="stats">{Array.from({ length: 4 }, (_, index) => <div className="card stat" key={index}><span>Loading secure data</span><b>...</b></div>)}</section></main>; }
