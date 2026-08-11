@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { createClient } from '@/lib/supabase/server';
+import { CookieOptions, createServerClient } from '@supabase/ssr';
 import { updateSession } from '@/lib/supabase/middleware';
 import { POST as loginPost } from '@/app/auth/login/route';
 
@@ -9,102 +8,104 @@ vi.mock('@supabase/ssr', () => ({
   createServerClient: vi.fn(),
 }));
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(),
-}));
+type ServerClientOptions = NonNullable<Parameters<typeof createServerClient>[2]>;
+type MiddlewareCookies = NonNullable<ServerClientOptions['cookies']>;
+type CookieDescriptor = {
+  name: string;
+  value: string;
+  options: CookieOptions;
+};
 
-type CookieState = {
+type CookieDescriptorEntry = {
   name: string;
   value: string;
 };
-
-type ServerClientOptions = NonNullable<Parameters<typeof createServerClient>[2]>;
-type MiddlewareCookies = NonNullable<ServerClientOptions['cookies']>;
-type CookieSetArgs = Parameters<MiddlewareCookies['setAll']>[0];
-type LoginClient = Awaited<ReturnType<typeof createClient>>;
 
 describe('server login and middleware cookie handoff', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('accepts middleware with auth cookies issued by /auth/login', async () => {
+  it('forwards actual /auth/login Set-Cookie headers into middleware and keeps /dashboard protected route', async () => {
     const createServerClientMock = vi.mocked(createServerClient);
-    const createClientMock = vi.mocked(createClient);
-    const issuedCookies: CookieState[] = [];
-    const cookiesToSet: CookieSetArgs = [
-      {
-        name: 'sb-access-token',
-        value: 'mock-access-token',
-        options: {
-          path: '/',
-          sameSite: 'lax',
-          httpOnly: true,
-        },
-      },
-      {
-        name: 'sb-refresh-token',
-        value: 'mock-refresh-token',
-        options: {
-          path: '/',
-          sameSite: 'lax',
-          httpOnly: true,
-        },
-      },
-    ];
+    let issuedCookieValues: CookieDescriptorEntry[] = [];
+    let loginCallSeen = false;
 
-    createClientMock.mockResolvedValue({
-      auth: {
-        async signInWithPassword() {
-          issuedCookies.push(
-            ...cookiesToSet.map(({ name, value }: CookieSetArgs[number]) => ({
-              name,
-              value,
-            }))
-          );
+    createServerClientMock.mockImplementation((_url, _key, config: { cookies: MiddlewareCookies }) => {
+      if (!loginCallSeen) {
+        loginCallSeen = true;
+        return {
+          auth: {
+            async signInWithPassword() {
+              const cookiesToSet: Array<CookieDescriptor> = [
+                {
+                  name: 'sb-access-token',
+                  value: 'mock-access-token',
+                  options: {
+                    path: '/',
+                    sameSite: 'lax',
+                    httpOnly: true,
+                  },
+                },
+                {
+                  name: 'sb-refresh-token',
+                  value: 'mock-refresh-token',
+                  options: {
+                    path: '/',
+                    sameSite: 'lax',
+                    httpOnly: true,
+                  },
+                },
+              ];
 
-          return {
-            data: {
-              user: {
-                id: 'auth-user-id',
-                email: 'test@example.com',
-              },
-              session: {
-                access_token: 'mock-access-token',
-                refresh_token: 'mock-refresh-token',
-                expires_in: 3600,
-                expires_at: Math.floor((Date.now() + 3600 * 1000) / 1000),
-                token_type: 'bearer',
-                user: { id: 'auth-user-id', email: 'test@example.com' },
-              },
-            },
-            error: null,
-          };
-        },
-      },
-    } as unknown as LoginClient);
+              issuedCookieValues = cookiesToSet.map(({ name, value }) => ({ name, value }));
+              config.cookies.setAll(cookiesToSet);
 
-    createServerClientMock.mockImplementationOnce((_url, _key, config: { cookies: MiddlewareCookies }) => ({
-      auth: {
-        async getUser() {
-          const hasAccessToken = config.cookies
-            .getAll()
-            .some((cookie: CookieState) => cookie.name === 'sb-access-token');
-
-          return {
-            data: {
-              user: hasAccessToken
-                ? {
+              return {
+                data: {
+                  user: {
                     id: 'auth-user-id',
                     email: 'test@example.com',
-                  }
-                : null,
+                  },
+                  session: {
+                    access_token: 'mock-access-token',
+                    refresh_token: 'mock-refresh-token',
+                    expires_in: 3600,
+                    expires_at: Math.floor((Date.now() + 3600 * 1000) / 1000),
+                    token_type: 'bearer',
+                    user: { id: 'auth-user-id', email: 'test@example.com' },
+                  },
+                },
+                error: null,
+              };
             },
-            error: null,
-          };
+          },
+        } as unknown as ReturnType<typeof createServerClient>;
+      }
+
+      return {
+            auth: {
+              async getUser() {
+            const requestCookieNames = new Set(config.cookies.getAll().map((cookie: { name: string; value: string }) => cookie.name));
+            const hasIssuedCookie = issuedCookieValues.some((issuedCookie) =>
+              requestCookieNames.has(issuedCookie.name)
+            );
+
+            return {
+              data: {
+                user: hasIssuedCookie
+                  ? {
+                      id: 'auth-user-id',
+                      email: 'test@example.com',
+                    }
+                  : null,
+              },
+              error: null,
+            };
+          },
         },
-      },
-    }) as unknown as ReturnType<typeof createServerClient>);
+      } as unknown as ReturnType<typeof createServerClient>;
+    });
 
     const response = await loginPost(
       new NextRequest('https://app.example.com/auth/login', {
@@ -117,10 +118,13 @@ describe('server login and middleware cookie handoff', () => {
     );
 
     expect(response.status).toBe(200);
+    expect(response.headers.get('set-cookie')).not.toBeNull();
+    const loginCookies = response.cookies.getAll();
+    expect(loginCookies.length).toBeGreaterThan(0);
 
     const dashboardRequest = new NextRequest('https://app.example.com/dashboard', {
       headers: {
-        cookie: issuedCookies
+        cookie: loginCookies
           .map(({ name, value }) => `${name}=${encodeURIComponent(value)}`)
           .join('; '),
       },
