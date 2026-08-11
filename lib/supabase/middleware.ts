@@ -15,21 +15,22 @@ export async function updateSession(request: NextRequest) {
         getAll: () => request.cookies.getAll(),
         setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set(name, value);
-            response.cookies.set(name, value, options);
+            response.cookies.set({
+              name,
+              value,
+              ...options,
+            });
           });
         },
       },
     }
   );
 
-  const {
-    data: { claims },
-    error,
-  } = await supabase.auth.getClaims();
+  const { data, error } = await supabase.auth.getClaims();
   const protectedRoute =
     request.nextUrl.pathname.startsWith('/dashboard') || request.nextUrl.pathname === '/onboarding';
-  if (error || (!claims?.sub && protectedRoute)) {
+  const isAuthenticated = Boolean(data?.claims?.sub);
+  if (error || (protectedRoute && !isAuthenticated)) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     url.searchParams.set('next', `${request.nextUrl.pathname}${request.nextUrl.search}`);
