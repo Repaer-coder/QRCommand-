@@ -20,17 +20,28 @@ export default function AuthForm() {
     event.preventDefault();
     setLoading(true);
     setMessage('');
+    if (mode === 'signin') {
+      const response = await fetch('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as { error?: string; ok?: boolean };
+      setLoading(false);
+      if (!response.ok) return setMessage(payload.error ?? 'Sign in failed.');
+      window.location.assign(next);
+      return;
+    }
+
     const supabase = createClient();
-    const result = mode === 'signup'
-      ? await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: `${location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
-        })
-      : await supabase.auth.signInWithPassword({ email, password });
+    const result = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: `${location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
+    });
     setLoading(false);
     if (result.error) return setMessage(result.error.message);
-    if (mode === 'signup' && !result.data.session) {
+    if (!result.data.session) {
       setMessage('Check your email to confirm the account, then return here to sign in.');
       return;
     }
