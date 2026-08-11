@@ -15,6 +15,11 @@ export async function updateSession(request: NextRequest) {
         getAll: () => request.cookies.getAll(),
         setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           cookiesToSet.forEach(({ name, value, options }) => {
+            request.cookies.set({
+              name,
+              value,
+              ...options,
+            });
             response.cookies.set({
               name,
               value,
@@ -26,11 +31,13 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  const { data, error } = await supabase.auth.getClaims();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
   const protectedRoute =
     request.nextUrl.pathname.startsWith('/dashboard') || request.nextUrl.pathname === '/onboarding';
-  const isAuthenticated = Boolean(data?.claims?.sub);
-  if (error || (protectedRoute && !isAuthenticated)) {
+  if (error || (protectedRoute && !user)) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     url.searchParams.set('next', `${request.nextUrl.pathname}${request.nextUrl.search}`);
