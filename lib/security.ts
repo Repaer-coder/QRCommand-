@@ -1,9 +1,16 @@
 import { isIP } from 'node:net';
 import { resolve4, resolve6 } from 'node:dns/promises';
 
+const SURROUNDING_URL_WHITESPACE = /^(?:\u200B|\u200C|\u200D|\u2060|\uFEFF)+|(?:\u200B|\u200C|\u200D|\u2060|\uFEFF)+$/gu;
+
+function normalizeUrlInput(value: string) {
+  return value.trim().replace(SURROUNDING_URL_WHITESPACE, '');
+}
+
 export function normalizeHttpUrl(value: string) {
   try {
-    const url = new URL(value);
+    const normalized = normalizeUrlInput(value);
+    const url = new URL(normalized);
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return null;
     return url.toString();
   } catch {
