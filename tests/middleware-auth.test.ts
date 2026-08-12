@@ -130,4 +130,45 @@ describe('auth middleware session protection', () => {
     expect(response.status).toBe(307);
     expect(response.headers.get('location')).toBe('https://app.example.com/login?next=%2Fdashboard');
   });
+
+  it('does not redirect /api/webhooks/stripe, even without a Supabase session', async () => {
+    const createServerClientMock = vi.mocked(createServerClient);
+    createServerClientMock.mockImplementation(() => ({
+      auth: {
+        async getUser() {
+          return { data: { user: null }, error: new Error('no session') };
+        },
+      },
+    }) as unknown as ReturnType<typeof createServerClient>);
+
+    const request = new NextRequest('https://app.example.com/api/webhooks/stripe', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+    });
+
+    const response = await updateSession(request);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('location')).toBeNull();
+    expect(createServerClientMock).not.toHaveBeenCalled();
+  });
+
+  it('redirects unauthenticated users to /login for onboarding', async () => {
+    const createServerClientMock = vi.mocked(createServerClient);
+    createServerClientMock.mockImplementation(() => ({
+      auth: {
+        async getUser() {
+          return { data: { user: null }, error: null };
+        },
+      },
+    }) as unknown as ReturnType<typeof createServerClient>);
+
+    const request = new NextRequest('https://app.example.com/onboarding');
+    const response = await updateSession(request);
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get('location')).toBe('https://app.example.com/login?next=%2Fonboarding');
+  });
 });

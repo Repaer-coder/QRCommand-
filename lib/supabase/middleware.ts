@@ -2,6 +2,15 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function updateSession(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+  const isStripeWebhook = path === '/api/webhooks/stripe';
+  if (isStripeWebhook) {
+    return NextResponse.next({
+      request,
+      headers: request.headers,
+    });
+  }
+
   const response = NextResponse.next({
     request,
     headers: request.headers,
@@ -36,8 +45,8 @@ export async function updateSession(request: NextRequest) {
     error,
   } = await supabase.auth.getUser();
   const protectedRoute =
-    request.nextUrl.pathname.startsWith('/dashboard') || request.nextUrl.pathname === '/onboarding';
-  if (error || (protectedRoute && !user)) {
+    path.startsWith('/dashboard') || path === '/onboarding';
+  if (protectedRoute && (error || !user)) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     url.searchParams.set('next', `${request.nextUrl.pathname}${request.nextUrl.search}`);
