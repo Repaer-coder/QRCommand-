@@ -26,8 +26,7 @@ export type WorkspaceBootstrapStage =
   | 'claim_workspace_invites'
   | 'owned_lookup'
   | 'membership_lookup'
-  | 'organization_create'
-  | 'membership_create';
+  | 'ensure_my_workspace';
 
 export interface WorkspaceContextError {
   authenticated: boolean;
@@ -115,32 +114,45 @@ export async function getWorkspaceContext(
   }
 
   if (!workspace) {
-    const workspaceName = `${(user.email || 'Business').split('@')[0]} Workspace`;
-    const created = await supabase
+    const ensureWorkspaceResult = await supabase.rpc('ensure_my_workspace');
+    if (ensureWorkspaceResult.error) {
+      return buildWorkspaceError(true, ensureWorkspaceResult.error.message, 'ensure_my_workspace');
+    }
+
+    let ensuredOrganizationId: string | null = null;
+    if (typeof ensureWorkspaceResult.data === 'string') {
+      ensuredOrganizationId = ensureWorkspaceResult.data;
+    } else if (
+      ensureWorkspaceResult.data &&
+      typeof ensureWorkspaceResult.data === 'object' &&
+      'organization_id' in ensureWorkspaceResult.data &&
+      typeof ensureWorkspaceResult.data.organization_id === 'string'
+    ) {
+      ensuredOrganizationId = ensureWorkspaceResult.data.organization_id;
+    } else if (
+      ensureWorkspaceResult.data &&
+      typeof ensureWorkspaceResult.data === 'object' &&
+      'id' in ensureWorkspaceResult.data &&
+      typeof ensureWorkspaceResult.data.id === 'string'
+    ) {
+      ensuredOrganizationId = ensureWorkspaceResult.data.id;
+    }
+
+    if (!ensuredOrganizationId) {
+      return buildWorkspaceError(true, 'Could not initialize workspace.', 'ensure_my_workspace');
+    }
+
+    const { data: ensuredOrg } = await supabase
       .from('organizations')
-      .insert({ name: workspaceName, owner_id: user.id })
       .select('id,name,plan,stripe_customer_id,business_type,onboarding_completed_at')
-      .single();
-    if (created.error || !created.data) {
-      return buildWorkspaceError(
-        true,
-        created.error?.message ?? 'Could not initialize workspace.',
-        'organization_create'
-      );
+      .eq('id', ensuredOrganizationId)
+      .maybeSingle();
+
+    if (!ensuredOrg) {
+      return buildWorkspaceError(true, 'Could not locate initialized workspace.', 'ensure_my_workspace');
     }
-    workspace = { ...(created.data as OrganizationRow), role: 'owner' };
-    const memberResult = await supabase.from('organization_members').upsert(
-      {
-        organization_id: workspace.id,
-        user_id: user.id,
-        email: user.email?.toLowerCase() ?? null,
-        role: 'owner',
-      },
-      { onConflict: 'organization_id,user_id' }
-    );
-    if (memberResult.error) {
-      return buildWorkspaceError(true, memberResult.error.message, 'membership_create');
-    }
+
+    workspace = { ...(ensuredOrg as OrganizationRow), role: 'owner' };
   }
 
   const effectivePlan = await getOrganizationPlan(supabase, workspace.id, workspace.plan);

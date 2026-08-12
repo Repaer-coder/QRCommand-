@@ -58,7 +58,7 @@ describe('workspace-aware route guards', () => {
       authenticated: true,
       error: 'Unable to initialize workspace.',
       workspaceError: 'Unable to initialize workspace.',
-      stage: 'organization_create',
+      stage: 'ensure_my_workspace',
     } satisfies WorkspaceContextError);
 
     await DashboardLayout({ children: 'content' });

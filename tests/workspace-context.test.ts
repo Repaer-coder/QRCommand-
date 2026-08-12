@@ -43,28 +43,20 @@ describe('workspace bootstrap flow', () => {
 
   it('creates an owner workspace and membership for a newly authenticated user', async () => {
     const organizationsLookup = createQueryBuilder();
-    organizationsLookup.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
-
-    const organizationsCreate = createQueryBuilder({
-      insert: vi.fn().mockReturnThis(),
-      single: vi.fn().mockResolvedValue({
-        data: {
-          id: 'org-001',
-          name: 'owner Workspace',
-          plan: 'free',
-          stripe_customer_id: null,
-          business_type: null,
-          onboarding_completed_at: null,
-        },
-        error: null,
-      }),
-    });
-
     const organizationMembersLookup = createQueryBuilder();
     organizationMembersLookup.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
 
-    const organizationMembersUpsert = createQueryBuilder({
-      upsert: vi.fn().mockResolvedValue({ data: null, error: null }),
+    const ensuredOrganization = createQueryBuilder();
+    ensuredOrganization.maybeSingle = vi.fn().mockResolvedValue({
+      data: {
+        id: 'org-001',
+        name: 'owner Workspace',
+        plan: 'free',
+        stripe_customer_id: null,
+        business_type: null,
+        onboarding_completed_at: null,
+      },
+      error: null,
     });
 
     const subscriptionLookup = createQueryBuilder();
@@ -76,11 +68,11 @@ describe('workspace bootstrap flow', () => {
     const from = vi.fn((tableName: string): QueryBuilderLike => {
       if (tableName === 'organizations') {
         organizationReads += 1;
-        return organizationReads === 1 ? organizationsLookup : organizationsCreate;
+        return organizationReads === 1 ? organizationsLookup : ensuredOrganization;
       }
       if (tableName === 'organization_members') {
         memberReads += 1;
-        return memberReads === 1 ? organizationMembersLookup : organizationMembersUpsert;
+        return memberReads === 1 ? organizationMembersLookup : createQueryBuilder();
       }
       return subscriptionLookup;
     });
@@ -94,7 +86,10 @@ describe('workspace bootstrap flow', () => {
           error: null,
         }),
       },
-      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+      rpc: vi.fn().mockResolvedValue({
+        data: 'org-001',
+        error: null,
+      }),
       from,
     } as unknown as SupabaseClient;
 
@@ -107,23 +102,11 @@ describe('workspace bootstrap flow', () => {
     expect(successContext.organization.name).toBe('owner Workspace');
     expect(successContext.userId).toBe('user-id');
 
-    expect(organizationsCreate.insert).toHaveBeenCalledWith({
-      name: 'owner Workspace',
-      owner_id: 'user-id',
-    });
-    expect(organizationsCreate.select).toHaveBeenCalledWith(
+    expect(supabase.rpc).toHaveBeenCalledWith('ensure_my_workspace');
+    expect(organizationsLookup.select).toHaveBeenCalledWith(
       'id,name,plan,stripe_customer_id,business_type,onboarding_completed_at'
     );
-    expect(organizationsCreate.single).toHaveBeenCalledTimes(1);
-    expect(organizationMembersUpsert.upsert).toHaveBeenCalledWith(
-      {
-        organization_id: 'org-001',
-        user_id: 'user-id',
-        email: 'owner@example.com',
-        role: 'owner',
-      },
-      { onConflict: 'organization_id,user_id' }
-    );
+    expect(ensuredOrganization.eq).toHaveBeenCalledWith('id', 'org-001');
     expect(subscriptionLookup.maybeSingle).toHaveBeenCalledTimes(1);
   });
 });
