@@ -21,6 +21,23 @@ export interface WorkspaceContext {
   };
 }
 
+export type WorkspaceBootstrapStage =
+  | 'auth'
+  | 'claim_workspace_invites'
+  | 'owned_lookup'
+  | 'membership_lookup'
+  | 'organization_create'
+  | 'membership_create';
+
+export interface WorkspaceContextError {
+  authenticated: boolean;
+  error: string;
+  workspaceError: string;
+  stage: WorkspaceBootstrapStage;
+}
+
+export type WorkspaceContextResult = WorkspaceContext | WorkspaceContextError;
+
 export function hasWorkspaceRole(role: WorkspaceRole, minimum: WorkspaceRole) {
   return roleRank[role] >= roleRank[minimum];
 }
@@ -31,14 +48,30 @@ export function canManageBilling(role: WorkspaceRole) {
 
 export async function getWorkspaceContext(
   supabase: SupabaseClient
-): Promise<WorkspaceContext | { error: string }> {
+): Promise<WorkspaceContextResult> {
+  const buildWorkspaceError = (
+    authenticated: boolean,
+    message: string,
+    stage: WorkspaceBootstrapStage
+  ): WorkspaceContextError => ({
+    authenticated,
+    error: message,
+    workspaceError: message,
+    stage,
+  });
+
   const {
     data: { user },
     error: userError,
   } = await supabase.auth.getUser();
-  if (userError || !user?.id) return { error: 'You must be signed in.' };
+  if (userError || !user?.id) {
+    return buildWorkspaceError(false, 'You must be signed in.', 'auth');
+  }
 
-  await supabase.rpc('claim_workspace_invites');
+  const claimWorkspaceResult = await supabase.rpc('claim_workspace_invites');
+  if (claimWorkspaceResult.error) {
+    return buildWorkspaceError(true, claimWorkspaceResult.error.message, 'claim_workspace_invites');
+  }
 
   type OrganizationRow = {
     id: string;
@@ -50,13 +83,14 @@ export async function getWorkspaceContext(
   };
 
   let workspace: (OrganizationRow & { role: WorkspaceRole }) | null = null;
-  const { data: owned } = await supabase
+  const { data: owned, error: ownedError } = await supabase
     .from('organizations')
     .select('id,name,plan,stripe_customer_id,business_type,onboarding_completed_at')
     .eq('owner_id', user.id)
     .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle();
+  if (ownedError) return buildWorkspaceError(true, ownedError.message, 'owned_lookup');
 
   if (owned) workspace = { ...(owned as OrganizationRow), role: 'owner' };
 
@@ -68,7 +102,7 @@ export async function getWorkspaceContext(
       .order('joined_at', { ascending: true })
       .limit(1)
       .maybeSingle();
-    if (memberError) return { error: memberError.message };
+    if (memberError) return buildWorkspaceError(true, memberError.message, 'membership_lookup');
 
     if (membership?.organization_id) {
       const { data: org } = await supabase
@@ -88,7 +122,11 @@ export async function getWorkspaceContext(
       .select('id,name,plan,stripe_customer_id,business_type,onboarding_completed_at')
       .single();
     if (created.error || !created.data) {
-      return { error: created.error?.message ?? 'Could not initialize workspace.' };
+      return buildWorkspaceError(
+        true,
+        created.error?.message ?? 'Could not initialize workspace.',
+        'organization_create'
+      );
     }
     workspace = { ...(created.data as OrganizationRow), role: 'owner' };
     const memberResult = await supabase.from('organization_members').upsert(
@@ -100,7 +138,9 @@ export async function getWorkspaceContext(
       },
       { onConflict: 'organization_id,user_id' }
     );
-    if (memberResult.error) return { error: memberResult.error.message };
+    if (memberResult.error) {
+      return buildWorkspaceError(true, memberResult.error.message, 'membership_create');
+    }
   }
 
   const effectivePlan = await getOrganizationPlan(supabase, workspace.id, workspace.plan);
