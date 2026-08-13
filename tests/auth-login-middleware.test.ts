@@ -83,13 +83,53 @@ describe('server login and middleware cookie handoff', () => {
         } as unknown as ReturnType<typeof createServerClient>;
       }
 
+      const from = vi.fn((table: string) => {
+        if (table === 'organizations') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: {
+                id: 'org-id',
+                name: 'Owner Workspace',
+                plan: 'essentials',
+                stripe_customer_id: null,
+                business_type: null,
+                onboarding_completed_at: new Date().toISOString(),
+              },
+              error: null,
+            }),
+          };
+        }
+
+        if (table === 'subscriptions') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            in: vi.fn().mockReturnThis(),
+            order: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+          };
+        }
+
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          order: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockReturnThis(),
+          in: vi.fn().mockReturnThis(),
+          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+        };
+      });
+
       return {
-            auth: {
-              async getUser() {
+        auth: {
+          async getUser() {
             const requestCookieNames = new Set(config.cookies.getAll().map((cookie: { name: string; value: string }) => cookie.name));
-            const hasIssuedCookie = issuedCookieValues.some((issuedCookie) =>
-              requestCookieNames.has(issuedCookie.name)
-            );
+            const hasIssuedCookie = issuedCookieValues.some((issuedCookie) => requestCookieNames.has(issuedCookie.name));
 
             return {
               data: {
@@ -104,6 +144,8 @@ describe('server login and middleware cookie handoff', () => {
             };
           },
         },
+        rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+        from,
       } as unknown as ReturnType<typeof createServerClient>;
     });
 
@@ -124,9 +166,7 @@ describe('server login and middleware cookie handoff', () => {
 
     const dashboardRequest = new NextRequest('https://app.example.com/dashboard', {
       headers: {
-        cookie: loginCookies
-          .map(({ name, value }) => `${name}=${encodeURIComponent(value)}`)
-          .join('; '),
+        cookie: loginCookies.map(({ name, value }) => `${name}=${encodeURIComponent(value)}`).join('; '),
       },
     });
 

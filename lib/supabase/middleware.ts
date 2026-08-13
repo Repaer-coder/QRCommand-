@@ -1,5 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { hasEntitlement } from '@/lib/plans';
+import { getWorkspaceContext } from '@/lib/workspace';
 
 export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
@@ -51,6 +53,23 @@ export async function updateSession(request: NextRequest) {
     url.pathname = '/login';
     url.searchParams.set('next', `${request.nextUrl.pathname}${request.nextUrl.search}`);
     return NextResponse.redirect(url, { headers: response.headers });
+  }
+
+  if (path.startsWith('/dashboard') && path !== '/dashboard/billing') {
+    const context = await getWorkspaceContext(supabase);
+    if ('error' in context) {
+      return NextResponse.redirect(new URL('/onboarding', request.url), { headers: response.headers });
+    }
+    if (!context.organization.onboarding_completed_at) {
+      const onboardingUrl = request.nextUrl.clone();
+      onboardingUrl.pathname = '/onboarding';
+      return NextResponse.redirect(onboardingUrl, { headers: response.headers });
+    }
+    if (!hasEntitlement(context.organization.plan, 'qr.core')) {
+      const billingUrl = request.nextUrl.clone();
+      billingUrl.pathname = '/dashboard/billing';
+      return NextResponse.redirect(billingUrl, { headers: response.headers });
+    }
   }
 
   response.headers.set('Cache-Control', 'private, no-store');

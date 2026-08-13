@@ -26,4 +26,9 @@ describe('central plan entitlements', () => {
     expect(hasReachedLimit(4, 5)).toBe(false);
     expect(hasReachedLimit(999999, null)).toBe(false);
   });
+
+  it('requires essentials or higher for core QR feature', () => {
+    expect(hasEntitlement('free', 'qr.core')).toBe(false);
+    expect(hasEntitlement('essentials', 'qr.core')).toBe(true);
+  });
 });

@@ -3,6 +3,7 @@ import React from 'react';
 import OnboardingForm from '@/components/onboarding-form';
 import { createClient } from '@/lib/supabase/server';
 import { getWorkspaceContext } from '@/lib/workspace';
+import { hasEntitlement } from '@/lib/plans';
 
 export default async function OnboardingPage() {
   const supabase = await createClient();
@@ -23,7 +24,10 @@ export default async function OnboardingPage() {
       </main>
     );
   }
-  if (context.organization.onboarding_completed_at) redirect('/dashboard');
+  if (context.organization.onboarding_completed_at) {
+    if (!hasEntitlement(context.organization.plan, 'qr.core')) redirect('/dashboard/billing');
+    redirect('/dashboard');
+  }
   if (context.organization.role !== 'owner') {
     return <main className="onboarding-page"><section className="card"><div className="eyebrow">Workspace setup</div><h1>The workspace owner needs to finish setup.</h1><p className="muted">Once onboarding is complete, refresh this page to enter the dashboard.</p></section></main>;
   }

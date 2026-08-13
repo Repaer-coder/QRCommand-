@@ -77,7 +77,7 @@ const rank: Record<PlanName, number> = {
 };
 
 const minimumPlan: Record<FeatureName, PlanName> = {
-  'qr.core': 'free',
+  'qr.core': 'essentials',
   'analytics.basic': 'essentials',
   'locations.basic': 'essentials',
   'blueprints.growth': 'premium',

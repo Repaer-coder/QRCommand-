@@ -73,7 +73,7 @@ describe('qr campaign API', () => {
       organization: {
         id: 'org-id',
         name: 'Owner Workspace',
-        plan: 'free',
+        plan: 'essentials',
         stripe_customer_id: null,
         business_type: null,
         onboarding_completed_at: null,
