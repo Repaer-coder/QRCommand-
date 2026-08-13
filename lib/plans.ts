@@ -56,7 +56,7 @@ export const plans: Record<PlanName, PlanDefinition> = {
     key: 'pro',
     label: 'Pro',
     description: 'Safe automation, reusable workflows, integrations, and audit history.',
-    displayPrice: 'Stripe price',
+    displayPrice: '$99',
     limits: { qrCodes: 2000, locations: 250, members: 250 },
   },
   pro_plus_ai: {
