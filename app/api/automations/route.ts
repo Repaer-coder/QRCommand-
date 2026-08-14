@@ -30,6 +30,7 @@ export async function PATCH(request: Request) {
   const context = await getWorkspaceContext(supabase);
   if ('error' in context) return NextResponse.json({ error: context.error }, { status: 401 });
   if (!hasWorkspaceRole(context.organization.role, 'manager')) return NextResponse.json({ error: 'Manager access is required.' }, { status: 403 });
+  if (!hasEntitlement(context.organization.plan, 'automation.engine')) return NextResponse.json({ error: 'Automation requires Pro or higher.' }, { status: 403 });
   const parsed = z.object({ id: z.string().uuid(), enabled: z.boolean() }).safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: 'Invalid automation update.' }, { status: 400 });
   const { data, error } = await supabase.from('automation_rules').update({ enabled: parsed.data.enabled }).eq('id', parsed.data.id).eq('organization_id', context.organization.id).select('id,enabled').maybeSingle();

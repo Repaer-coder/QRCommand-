@@ -13,7 +13,18 @@ async function syncSubscription(subscription: Stripe.Subscription, organizationH
   if (!supabase) throw new Error('Supabase admin client unavailable.');
 
   const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id;
-  let organizationId = organizationHint || subscription.metadata.organizationId;
+  const hintedOrganizationId = organizationHint || subscription.metadata.organizationId;
+  let organizationId: string | null = null;
+  if (hintedOrganizationId) {
+    const { data: hintedWorkspace } = await supabase
+      .from('organizations')
+      .select('id,stripe_customer_id')
+      .eq('id', hintedOrganizationId)
+      .maybeSingle();
+    if (hintedWorkspace?.stripe_customer_id === customerId) {
+      organizationId = hintedWorkspace.id;
+    }
+  }
   if (!organizationId) {
     const { data: organization } = await supabase
       .from('organizations')

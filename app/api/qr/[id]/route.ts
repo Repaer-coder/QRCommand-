@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { getWorkspaceContext, hasWorkspaceRole } from '@/lib/workspace';
+import { hasEntitlement } from '@/lib/plans';
 import { normalizeHttpUrl } from '@/lib/security';
 
 const patchSchema = z
@@ -29,6 +30,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const supabase = await createClient();
   const context = await getWorkspaceContext(supabase);
   if ('error' in context) return NextResponse.json({ error: context.error }, { status: 401 });
+  if (!hasEntitlement(context.organization.plan, 'qr.core')) return NextResponse.json({ error: 'QR creation is unavailable on this plan.' }, { status: 403 });
   const { id } = await params;
   const code = await resolveCode(supabase, context.organization.id, id);
   if (!code) return NextResponse.json({ error: 'Campaign not found.' }, { status: 404 });
@@ -70,6 +72,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   const supabase = await createClient();
   const context = await getWorkspaceContext(supabase);
   if ('error' in context) return NextResponse.json({ error: context.error }, { status: 401 });
+  if (!hasEntitlement(context.organization.plan, 'qr.core')) return NextResponse.json({ error: 'QR creation is unavailable on this plan.' }, { status: 403 });
   if (!hasWorkspaceRole(context.organization.role, 'admin')) {
     return NextResponse.json({ error: 'Admin access is required to permanently delete campaigns.' }, { status: 403 });
   }

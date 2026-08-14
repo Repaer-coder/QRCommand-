@@ -29,9 +29,17 @@ export async function DELETE(request: Request) {
   const context = await getWorkspaceContext(supabase);
   if ('error' in context) return NextResponse.json({ error: context.error }, { status: 401 });
   if (!hasWorkspaceRole(context.organization.role, 'admin')) return NextResponse.json({ error: 'Admin access is required.' }, { status: 403 });
+  if (!hasEntitlement(context.organization.plan, 'integrations.advanced')) return NextResponse.json({ error: 'Integrations require Pro or higher.' }, { status: 403 });
   const id = new URL(request.url).searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'Missing integration.' }, { status: 400 });
-  const { error } = await supabase.from('integrations').delete().eq('id', id).eq('organization_id', context.organization.id);
+  const { data, error } = await supabase
+    .from('integrations')
+    .delete()
+    .eq('id', id)
+    .eq('organization_id', context.organization.id)
+    .select('id')
+    .maybeSingle();
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (!data) return NextResponse.json({ error: 'Integration not found.' }, { status: 404 });
   return NextResponse.json({ success: true });
 }

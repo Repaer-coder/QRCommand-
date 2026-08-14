@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { hasEntitlement } from '@/lib/plans';
 import { getWorkspaceContext, hasWorkspaceRole } from '@/lib/workspace';
 
 const patchSchema = z.object({
@@ -14,6 +15,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if ('error' in context) return NextResponse.json({ error: context.error }, { status: 401 });
   if (!hasWorkspaceRole(context.organization.role, 'manager')) {
     return NextResponse.json({ error: 'Manager access is required.' }, { status: 403 });
+  }
+  if (!hasEntitlement(context.organization.plan, 'locations.basic')) {
+    return NextResponse.json({ error: 'Locations require an Essentials or higher plan.' }, { status: 403 });
   }
   const parsed = patchSchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: 'Invalid location details.' }, { status: 400 });
@@ -36,6 +40,9 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   if ('error' in context) return NextResponse.json({ error: context.error }, { status: 401 });
   if (!hasWorkspaceRole(context.organization.role, 'admin')) {
     return NextResponse.json({ error: 'Admin access is required to delete locations.' }, { status: 403 });
+  }
+  if (!hasEntitlement(context.organization.plan, 'locations.basic')) {
+    return NextResponse.json({ error: 'Locations require an Essentials or higher plan.' }, { status: 403 });
   }
   const { id } = await params;
   const { error, count } = await supabase
