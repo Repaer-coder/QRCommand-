@@ -234,6 +234,103 @@ describe('auth middleware session protection', () => {
     expect(response.headers.get('location')).toBe('https://app.example.com/dashboard/billing');
   });
 
+  it('allows platform owner users through unpaid dashboard paths', async () => {
+    const previousOwner = process.env.PLATFORM_OWNER_EMAIL;
+    process.env.PLATFORM_OWNER_EMAIL = 'owner-platform@example.com';
+    try {
+      vi.mocked(getWorkspaceContext).mockResolvedValue({
+        userId: 'auth-user-id',
+        email: 'owner-platform@example.com',
+        organization: {
+          id: 'org-id',
+          name: 'Owner Workspace',
+          plan: 'free',
+          stripe_customer_id: null,
+          business_type: null,
+          onboarding_completed_at: new Date().toISOString(),
+          role: 'owner',
+        },
+      });
+
+      const createServerClientMock = vi.mocked(createServerClient);
+      createServerClientMock.mockImplementation(() => ({
+        auth: {
+          async getUser() {
+            return {
+              data: {
+                user: { id: 'auth-user-id', email: 'owner-platform@example.com' },
+              },
+              error: null,
+            };
+          },
+        },
+      }) as unknown as ReturnType<typeof createServerClient>);
+
+      const response = await updateSession(
+        new NextRequest('https://app.example.com/dashboard/analytics', {
+          headers: {
+            cookie: 'sb-access-token=initial-token',
+          },
+        })
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get('location')).toBeNull();
+      const billingResponse = await updateSession(
+        new NextRequest('https://app.example.com/dashboard/settings', {
+          headers: {
+            cookie: 'sb-access-token=initial-token',
+          },
+        })
+      );
+      expect(billingResponse.status).toBe(200);
+      expect(billingResponse.headers.get('location')).toBeNull();
+    } finally {
+      process.env.PLATFORM_OWNER_EMAIL = previousOwner;
+    }
+  });
+
+  it('allows authenticated paid users from dashboard routes', async () => {
+    vi.mocked(getWorkspaceContext).mockResolvedValue({
+      userId: 'auth-user-id',
+      email: 'paid-user@example.com',
+      organization: {
+        id: 'org-id',
+        name: 'Owner Workspace',
+        plan: 'essentials',
+        stripe_customer_id: 'cus_paid',
+        business_type: null,
+        onboarding_completed_at: new Date().toISOString(),
+        role: 'owner',
+      },
+    });
+
+    const createServerClientMock = vi.mocked(createServerClient);
+    createServerClientMock.mockImplementation(() => ({
+      auth: {
+        async getUser() {
+          return {
+            data: {
+              user: { id: 'auth-user-id', email: 'paid-user@example.com' },
+            },
+            error: null,
+          };
+        },
+      },
+    }) as unknown as ReturnType<typeof createServerClient>);
+
+    const response = await updateSession(
+      new NextRequest('https://app.example.com/dashboard/analytics', {
+        headers: {
+          cookie: 'sb-access-token=initial-token',
+        },
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('location')).toBeNull();
+  });
+
   it('does not redirect unpaid users from /dashboard/billing', async () => {
     const createServerClientMock = vi.mocked(createServerClient);
     createServerClientMock.mockImplementation(() => ({

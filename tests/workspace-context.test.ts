@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getWorkspaceContext, type WorkspaceContext } from '@/lib/workspace';
+import { featureNames, hasEntitlement, isPlatformOwnerEmail } from '@/lib/plans';
 
 type WorkspaceDatabaseResult<T> = {
   data: T;
@@ -108,5 +109,76 @@ describe('workspace bootstrap flow', () => {
     );
     expect(ensuredOrganization.eq).toHaveBeenCalledWith('id', 'org-001');
     expect(subscriptionLookup.maybeSingle).toHaveBeenCalledTimes(1);
+    expect(successContext.organization.plan).toBe('free');
+  });
+
+  it('grants PLATFORM_OWNER_EMAIL users pro_plus_ai context without an active subscription', async () => {
+    const originalOwnerEmail = process.env.PLATFORM_OWNER_EMAIL;
+    process.env.PLATFORM_OWNER_EMAIL = 'owner-override@example.com';
+
+    try {
+      const organizationsLookup = createQueryBuilder();
+      const organizationMembersLookup = createQueryBuilder();
+      organizationMembersLookup.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+
+      const ensuredOrganization = createQueryBuilder();
+      ensuredOrganization.maybeSingle = vi.fn().mockResolvedValue({
+        data: {
+          id: 'org-001',
+          name: 'owner Workspace',
+          plan: 'free',
+          stripe_customer_id: null,
+          business_type: null,
+          onboarding_completed_at: null,
+        },
+        error: null,
+      });
+
+      const subscriptionLookup = createQueryBuilder();
+      subscriptionLookup.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+
+      let organizationReads = 0;
+      let memberReads = 0;
+
+      const from = vi.fn((tableName: string): QueryBuilderLike => {
+        if (tableName === 'organizations') {
+          organizationReads += 1;
+          return organizationReads === 1 ? organizationsLookup : ensuredOrganization;
+        }
+        if (tableName === 'organization_members') {
+          memberReads += 1;
+          return memberReads === 1 ? organizationMembersLookup : createQueryBuilder();
+        }
+        return subscriptionLookup;
+      });
+
+      const supabase = {
+        auth: {
+          getUser: vi.fn().mockResolvedValue({
+            data: {
+              user: { id: 'user-id', email: 'owner-override@example.com' },
+            },
+            error: null,
+          }),
+        },
+        rpc: vi.fn().mockResolvedValue({
+          data: 'org-001',
+          error: null,
+        }),
+        from,
+      } as unknown as SupabaseClient;
+
+      const context = await getWorkspaceContext(supabase);
+      expect('error' in context).toBe(false);
+
+      const successContext = context as WorkspaceContext;
+      expect(successContext.organization.plan).toBe('pro_plus_ai');
+      expect(isPlatformOwnerEmail(successContext.email)).toBe(true);
+      for (const feature of featureNames) {
+        expect(hasEntitlement(successContext.organization.plan, feature)).toBe(true);
+      }
+    } finally {
+      process.env.PLATFORM_OWNER_EMAIL = originalOwnerEmail;
+    }
   });
 });

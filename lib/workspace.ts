@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { normalizePlan, type PlanName } from '@/lib/plans';
+import { isPlatformOwnerEmail, type PlanName } from '@/lib/plans';
 export { getPlanLabel, hasEntitlement, plans } from '@/lib/plans';
 
 export const workspaceRoles = ['owner', 'admin', 'manager', 'member'] as const;
@@ -155,7 +155,8 @@ export async function getWorkspaceContext(
     workspace = { ...(ensuredOrg as OrganizationRow), role: 'owner' };
   }
 
-  const effectivePlan = await getOrganizationPlan(supabase, workspace.id, workspace.plan);
+  const isPlatformOwner = isPlatformOwnerEmail(user.email);
+  const effectivePlan = isPlatformOwner ? 'pro_plus_ai' : await getOrganizationPlan(supabase, workspace.id);
   return {
     userId: user.id,
     email: user.email ?? '',
@@ -165,8 +166,7 @@ export async function getWorkspaceContext(
 
 async function getOrganizationPlan(
   supabase: SupabaseClient,
-  organizationId: string,
-  storedPlan: string | null
+  organizationId: string
 ): Promise<PlanName> {
   const { data: subscription } = await supabase
     .from('subscriptions')
@@ -181,5 +181,5 @@ async function getOrganizationPlan(
     const { resolvePlanFromPrice } = await import('@/lib/stripe');
     return resolvePlanFromPrice(subscription.price_id);
   }
-  return normalizePlan(storedPlan);
+  return 'free';
 }

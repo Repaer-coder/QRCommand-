@@ -87,6 +87,33 @@ describe('workspace-aware route guards', () => {
     expect(redirect).toHaveBeenCalledWith('/dashboard/billing');
   });
 
+  it('allows platform owner to proceed to dashboard after onboarding with no paid plan', async () => {
+    const previousOwner = process.env.PLATFORM_OWNER_EMAIL;
+    process.env.PLATFORM_OWNER_EMAIL = 'platform-owner@example.com';
+    try {
+      getWorkspaceContextMock.mockResolvedValue({
+        userId: 'user-id',
+        email: 'platform-owner@example.com',
+        organization: {
+          id: 'org-id',
+          name: 'Owner Workspace',
+          plan: 'free',
+          stripe_customer_id: null,
+          business_type: null,
+          onboarding_completed_at: '2026-01-01T00:00:00.000Z',
+          role: 'owner' as const,
+        },
+      } satisfies WorkspaceContext);
+
+      await OnboardingPage();
+
+      expect(redirect).not.toHaveBeenCalledWith('/dashboard/billing');
+      expect(redirect).toHaveBeenCalledWith('/dashboard');
+    } finally {
+      process.env.PLATFORM_OWNER_EMAIL = previousOwner;
+    }
+  });
+
   it('still redirects unauthenticated users to /login', async () => {
     getWorkspaceContextMock.mockResolvedValue({
       authenticated: false,

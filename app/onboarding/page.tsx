@@ -3,7 +3,7 @@ import React from 'react';
 import OnboardingForm from '@/components/onboarding-form';
 import { createClient } from '@/lib/supabase/server';
 import { getWorkspaceContext } from '@/lib/workspace';
-import { hasEntitlement } from '@/lib/plans';
+import { hasEntitlement, isPlatformOwnerEmail } from '@/lib/plans';
 
 export default async function OnboardingPage() {
   const supabase = await createClient();
@@ -25,7 +25,9 @@ export default async function OnboardingPage() {
     );
   }
   if (context.organization.onboarding_completed_at) {
-    if (!hasEntitlement(context.organization.plan, 'qr.core')) redirect('/dashboard/billing');
+    if (!isPlatformOwnerEmail(context.email) && !hasEntitlement(context.organization.plan, 'qr.core')) {
+      redirect('/dashboard/billing');
+    }
     redirect('/dashboard');
   }
   if (context.organization.role !== 'owner') {

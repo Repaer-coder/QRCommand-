@@ -101,6 +101,12 @@ export function normalizePlan(value: string | null | undefined): PlanName {
   return planNames.includes(value as PlanName) ? (value as PlanName) : 'free';
 }
 
+export function isPlatformOwnerEmail(email?: string | null): boolean {
+  const override = process.env.PLATFORM_OWNER_EMAIL?.trim().toLowerCase();
+  if (!override || !email) return false;
+  return email.trim().toLowerCase() === override;
+}
+
 export function hasEntitlement(plan: PlanName, feature: FeatureName) {
   return rank[plan] >= rank[minimumPlan[feature]];
 }
@@ -111,4 +117,8 @@ export function hasReachedLimit(current: number, limit: number | null) {
 
 export function getPlanLabel(plan: PlanName) {
   return plans[plan].label;
+}
+
+export function getPlanDisplayLabel(plan: PlanName, email?: string | null) {
+  return isPlatformOwnerEmail(email) ? 'Platform Owner — Internal Access' : getPlanLabel(plan);
 }

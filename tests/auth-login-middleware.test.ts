@@ -3,6 +3,11 @@ import { NextRequest } from 'next/server';
 import { CookieOptions, createServerClient } from '@supabase/ssr';
 import { updateSession } from '@/lib/supabase/middleware';
 import { POST as loginPost } from '@/app/auth/login/route';
+import { getWorkspaceContext } from '@/lib/workspace';
+
+vi.mock('@/lib/workspace', () => ({
+  getWorkspaceContext: vi.fn(),
+}));
 
 vi.mock('@supabase/ssr', () => ({
   createServerClient: vi.fn(),
@@ -24,6 +29,19 @@ type CookieDescriptorEntry = {
 describe('server login and middleware cookie handoff', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getWorkspaceContext).mockResolvedValue({
+      userId: 'auth-user-id',
+      email: 'test@example.com',
+      organization: {
+        id: 'org-id',
+        name: 'Owner Workspace',
+        plan: 'essentials',
+        stripe_customer_id: null,
+        business_type: null,
+        onboarding_completed_at: new Date().toISOString(),
+        role: 'owner',
+      },
+    });
   });
 
   it('forwards actual /auth/login Set-Cookie headers into middleware and keeps /dashboard protected route', async () => {

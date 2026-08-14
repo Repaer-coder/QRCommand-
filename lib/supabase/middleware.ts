@@ -1,6 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { hasEntitlement } from '@/lib/plans';
+import { hasEntitlement, isPlatformOwnerEmail } from '@/lib/plans';
 import { getWorkspaceContext } from '@/lib/workspace';
 
 export async function updateSession(request: NextRequest) {
@@ -65,7 +65,7 @@ export async function updateSession(request: NextRequest) {
       onboardingUrl.pathname = '/onboarding';
       return NextResponse.redirect(onboardingUrl, { headers: response.headers });
     }
-    if (!hasEntitlement(context.organization.plan, 'qr.core')) {
+    if (!isPlatformOwnerEmail(context.email) && !hasEntitlement(context.organization.plan, 'qr.core')) {
       const billingUrl = request.nextUrl.clone();
       billingUrl.pathname = '/dashboard/billing';
       return NextResponse.redirect(billingUrl, { headers: response.headers });
