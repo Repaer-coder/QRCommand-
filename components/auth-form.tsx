@@ -1,9 +1,13 @@
-'use client';
+"use client";
+
+import React from 'react';
 
 import { type FormEvent, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { safeReturnPath } from '@/lib/paths';
+import LegalLinks from '@/components/legal-links';
+import { legalPolicyLinks } from '@/lib/legal';
 
 type Mode = 'signin' | 'signup';
 
@@ -15,6 +19,7 @@ export default function AuthForm() {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState(searchParams.get('error') ? 'The sign-in link could not be completed. Please try again.' : '');
   const [loading, setLoading] = useState(false);
+  const [acceptedPolicies, setAcceptedPolicies] = useState(false);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -31,6 +36,13 @@ export default function AuthForm() {
       if (!response.ok) return setMessage(payload.error ?? 'Sign in failed.');
       window.location.assign(next);
       return;
+    }
+
+    if (!acceptedPolicies) {
+      setLoading(false);
+      return setMessage(
+        'Please accept the Terms of Service, Privacy Policy, and Refund policy before creating your account.'
+      );
     }
 
     const supabase = createClient();
@@ -69,7 +81,38 @@ export default function AuthForm() {
         <button className="btn" disabled={loading}>{loading ? 'Working...' : mode === 'signin' ? 'Sign in' : 'Create account'}</button>
       </form>
       {message && <p className="notice" role="status">{message}</p>}
+      {mode === 'signup' && (
+        <label className="checkfield auth-consent">
+          <input
+            type="checkbox"
+            name="policy-consent"
+            checked={acceptedPolicies}
+            onChange={(event) => setAcceptedPolicies(event.currentTarget.checked)}
+            required
+          />
+          <span>
+            By creating an account, I agree to the{' '}
+            <a href={legalPolicyLinks[0].href} target="_blank" rel="noopener noreferrer">
+              {legalPolicyLinks[0].label}
+            </a>{' '}
+            and{' '}
+            <a href={legalPolicyLinks[3].href} target="_blank" rel="noopener noreferrer">
+              {legalPolicyLinks[3].label}
+            </a>{' '}
+            and acknowledge the{' '}
+            <a href={legalPolicyLinks[1].href} target="_blank" rel="noopener noreferrer">
+              {legalPolicyLinks[1].label}
+            </a>{' '}
+            and{' '}
+            <a href={legalPolicyLinks[2].href} target="_blank" rel="noopener noreferrer">
+              {legalPolicyLinks[2].label}
+            </a>
+            .
+          </span>
+        </label>
+      )}
       <div className="auth-options">
+        <LegalLinks />
         <button className="textbutton" type="button" onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setMessage(''); }}>
           {mode === 'signin' ? 'Need an account? Create one' : 'Already have an account? Sign in'}
         </button>

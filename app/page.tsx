@@ -1,5 +1,7 @@
+import React from 'react';
 import Link from 'next/link';
 import { BarChart3, Building2, GitBranch, QrCode, ShieldCheck, Sparkles } from 'lucide-react';
+import LegalLinks from '@/components/legal-links';
 
 const cells = Array.from({ length: 81 });
 const features = [
@@ -13,5 +15,99 @@ const features = [
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams;
-  return <><main className="container">{error && <p className="notice">That QR campaign is unavailable, paused, expired, or not configured correctly.</p>}<section className="hero"><div><div className="eyebrow">Business optimization through every scan</div><h1>QR codes are not the product. <span>What they activate is.</span></h1><p>Build permanent QR entry points for customer journeys, locations, restaurant operations, reputation, social conversion, analytics, automation, and responsible AI recommendations.</p><div className="actions"><Link className="btn" href="/login?mode=signup">Create your workspace</Link><Link className="btn secondary" href="/pricing">Explore the four tiers</Link></div></div><div className="card hero-visual"><div className="floating-metric one"><small>Destination</small><b>Editable</b></div><div className="mockqr">{cells.map((_, index) => <i key={index} />)}</div><div className="floating-metric two"><small>Scan layer</small><b>Measured</b></div></div></section><section id="platform" className="section"><div className="section-lead"><div className="eyebrow">One operating system</div><h2>From printed placement to business intelligence.</h2><p>QR Command keeps campaign control, analytics, locations, teams, billing, workflows, and intelligence inside one secure workspace.</p></div><div className="grid3">{features.map(([Icon, title, description]) => <article className="card feature" key={title}><div className="feature-icon"><Icon size={22} /></div><h3>{title}</h3><p>{description}</p></article>)}</div></section><section id="systems" className="section"><div className="section-lead"><div className="eyebrow">Operational growth loops</div><h2>Design the journey after the scan.</h2></div><div className="landing-journey"><article className="card"><h3>Restaurant</h3><p className="muted">Menu discovery, order destinations, review prompts, and return visits.</p></article><article className="card"><h3>Reputation</h3><p className="muted">Public review paths, private feedback, and referral follow-up.</p></article><article className="card"><h3>Social</h3><p className="muted">Physical placement to social engagement and measurable next steps.</p></article><article className="card"><h3>Operations</h3><p className="muted">Safe triggers, validated actions, signed webhooks, and audit history.</p></article></div></section><section className="section"><div className="card cta-band"><h2>Start with one permanent campaign. Grow into a business command layer.</h2><Link className="btn" href="/login?mode=signup">Open QR Command</Link></div></section></main><footer className="footer"><div className="container">QR Command. Dynamic QR infrastructure for measurable business operations.</div></footer></>;
+
+  return (
+    <>
+      <main className="container">
+        {error && <p className="notice">That QR campaign is unavailable, paused, expired, or not configured correctly.</p>}
+        <section className="hero">
+          <div>
+            <div className="eyebrow">Business optimization through every scan</div>
+            <h1>
+              QR codes are not the product. <span>What they activate is.</span>
+            </h1>
+            <p>
+              Build permanent QR entry points for customer journeys, locations, restaurant operations, reputation, social conversion,
+              analytics, automation, and responsible AI recommendations.
+            </p>
+            <div className="actions">
+              <Link className="btn" href="/login?mode=signup">
+                Create your workspace
+              </Link>
+              <Link className="btn secondary" href="/pricing">
+                Explore the four tiers
+              </Link>
+            </div>
+          </div>
+          <div className="card hero-visual">
+            <div className="floating-metric one">
+              <small>Destination</small>
+              <b>Editable</b>
+            </div>
+            <div className="mockqr">{cells.map((_, index) => <i key={index} />)}</div>
+            <div className="floating-metric two">
+              <small>Scan layer</small>
+              <b>Measured</b>
+            </div>
+          </div>
+        </section>
+        <section id="platform" className="section">
+          <div className="section-lead">
+            <div className="eyebrow">One operating system</div>
+            <h2>From printed placement to business intelligence.</h2>
+            <p>QR Command keeps campaign control, analytics, locations, team, billing, workflows, and intelligence inside one secure workspace.</p>
+          </div>
+          <div className="grid3">
+            {features.map(([Icon, title, description]) => (
+              <article className="card feature" key={title}>
+                <div className="feature-icon">
+                  <Icon size={22} />
+                </div>
+                <h3>{title}</h3>
+                <p>{description}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+        <section id="systems" className="section">
+          <div className="section-lead">
+            <div className="eyebrow">Operational growth loops</div>
+            <h2>Design the journey after the scan.</h2>
+          </div>
+          <div className="landing-journey">
+            <article className="card">
+              <h3>Restaurant</h3>
+              <p className="muted">Menu discovery, order destinations, review prompts, and return visits.</p>
+            </article>
+            <article className="card">
+              <h3>Reputation</h3>
+              <p className="muted">Public review paths, private feedback, and referral follow-up.</p>
+            </article>
+            <article className="card">
+              <h3>Social</h3>
+              <p className="muted">Physical placement to social engagement and measurable next steps.</p>
+            </article>
+            <article className="card">
+              <h3>Operations</h3>
+              <p className="muted">Safe triggers, validated actions, signed webhooks, and audit history.</p>
+            </article>
+          </div>
+        </section>
+        <section className="section">
+          <div className="card cta-band">
+            <h2>Start with one permanent campaign. Grow into a business command layer.</h2>
+            <Link className="btn" href="/login?mode=signup">
+              Open QR Command
+            </Link>
+          </div>
+        </section>
+      </main>
+      <footer className="footer">
+        <div className="container footer-links">
+          <p>QR Command. Dynamic QR infrastructure for measurable business operations.</p>
+          <LegalLinks />
+        </div>
+      </footer>
+    </>
+  );
 }

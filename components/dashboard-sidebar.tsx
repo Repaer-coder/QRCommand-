@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import React from 'react';
+import LegalLinks from '@/components/legal-links';
 import {
   BarChart3,
   Bot,
@@ -74,6 +75,7 @@ export default function DashboardSidebar({
           <b>{userLabel}</b>
           <small>{role}</small>
         </span>
+        <LegalLinks compact />
         <form action="/auth/signout" method="post">
           <button className="textbutton" type="submit">Sign out</button>
         </form>

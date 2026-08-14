@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import DashboardSidebar from '@/components/dashboard-sidebar';
 import { CheckoutButton, PortalButton } from '@/components/billing-actions';
@@ -5,6 +6,8 @@ import { getPlanDisplayLabel, plans, type PaidPlanName } from '@/lib/plans';
 import { prices, resolvePlanFromPrice } from '@/lib/stripe';
 import { createClient } from '@/lib/supabase/server';
 import { canManageBilling, getWorkspaceContext } from '@/lib/workspace';
+import LegalLinks from '@/components/legal-links';
+import React from 'react';
 
 type BillingWorkspacePageSearchParams = {
   checkout?: string;
@@ -87,10 +90,12 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
             </article>
           ))}
         </section>
+
         <p className="muted billing-note">
-          Displayed legacy prices reflect the existing project configuration. Stripe Checkout is the final source for charged
-          price, tax, promotions, and billing terms.
+          Subscriptions renew monthly until canceled. Payments are non-refundable except where required by law.
+          Cancel subscriptions through Stripe in the customer portal, or see <Link href="/refund-policy">Cancellation and Refund Policy</Link>.
         </p>
+        <LegalLinks />
       </main>
     </div>
   );
