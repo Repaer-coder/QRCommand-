@@ -100,7 +100,14 @@ export default function QRCreator({
       <aside className="card preview-panel">
         <span className="pill">Live preview</span>
         <div className="qrbox"><canvas ref={canvas} /></div>
-        <code>{dynamicUrl}</code>
+        <div style={{ width: '100%', display: 'grid', gap: '8px', textAlign: 'left' }}>
+          <span className="muted small">QR points to:</span>
+          <a className="codeurl" href={dynamicUrl} target="_blank" rel="noopener noreferrer">
+            {dynamicUrl}
+          </a>
+          <span className="muted small">Redirects to:</span>
+          <code>{url || 'No destination set yet.'}</code>
+        </div>
         <p className="muted small">The printed QR stays permanent. Change the destination later without replacing it.</p>
       </aside>
     </div>

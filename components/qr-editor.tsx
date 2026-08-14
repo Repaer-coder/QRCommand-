@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import QRCode from 'qrcode';
 
 export default function QREditor({
   code,
@@ -20,6 +21,36 @@ export default function QREditor({
   const [bg, setBg] = useState(code.style?.bg ?? '#ffffff');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const [qrImage, setQrImage] = useState('');
+  const shortLink = useMemo(() => (typeof window === 'undefined' ? `/r/${code.slug}` : `${window.location.origin}/r/${code.slug}`), [code.slug]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void QRCode.toDataURL(shortLink, {
+      width: 280,
+      margin: 2,
+      errorCorrectionLevel: 'H',
+      color: { dark: fg, light: bg },
+    }).then((value) => {
+      if (!cancelled) setQrImage(value);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [shortLink, fg, bg]);
+
+  async function downloadQr() {
+    const data = qrImage || (await QRCode.toDataURL(shortLink, {
+      width: 1400,
+      margin: 2,
+      errorCorrectionLevel: 'H',
+      color: { dark: fg, light: bg },
+    }));
+    const anchor = document.createElement('a');
+    anchor.href = data;
+    anchor.download = `${code.slug}.png`;
+    anchor.click();
+  }
 
   async function save() {
     setBusy(true);
@@ -45,7 +76,38 @@ export default function QREditor({
         <label className="field full">Location<select className="input" value={locationId} onChange={(event) => setLocationId(event.target.value)}><option value="">Workspace-wide campaign</option>{locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}</select></label>
         <label className="field">Foreground<input className="colorinput" type="color" value={fg} onChange={(event) => setFg(event.target.value)} /></label>
         <label className="field">Background<input className="colorinput" type="color" value={bg} onChange={(event) => setBg(event.target.value)} /></label>
-        <div className="field full"><span>Permanent link</span><p className="codeurl">/r/{code.slug}</p></div>
+        <div className="field full">
+          <span>Permanent link</span>
+          <a className="codeurl" href={shortLink} target="_blank" rel="noopener noreferrer">
+            {shortLink}
+          </a>
+        </div>
+      </div>
+      <div className="preview-panel">
+        <span className="pill">Scannable QR preview</span>
+        {qrImage ? (
+          <a href={shortLink} target="_blank" rel="noopener noreferrer">
+            <img
+              alt={`Permanent QR for ${code.slug}`}
+              src={qrImage}
+              width={280}
+              height={280}
+              style={{ background: '#ffffff', borderRadius: '14px', padding: '8px', border: '1px solid var(--line)' }}
+            />
+          </a>
+        ) : (
+          <div className="qrbox">
+            <small className="muted">Generating QR...</small>
+          </div>
+        )}
+        <div className="actions">
+          <a className="btn secondary" href={shortLink} target="_blank" rel="noopener noreferrer">
+            Test link
+          </a>
+          <button className="btn" type="button" onClick={downloadQr}>
+            Download QR
+          </button>
+        </div>
       </div>
       <div className="actions"><button className="btn" type="button" disabled={busy} onClick={save}>{busy ? 'Saving...' : 'Save changes'}</button><Link className="btn secondary" href="/dashboard/qr-codes">Back to library</Link></div>
       {message && <p className="notice" role="status">{message}</p>}
