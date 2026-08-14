@@ -1,19 +1,76 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { FormEvent, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
+  getBlueprintTemplate,
+  type GrowthBlueprintTemplate,
   filterBlueprintTemplates,
   getBlueprintIndustries,
   getBlueprintOutcomes,
 } from '@/lib/blueprints';
 
-export default function BlueprintManager({ instances, canManage }: { instances: Array<{ id: string; template_key: string; name: string; status: string; configuration: Record<string, unknown>; created_at: string }>; canManage: boolean }) {
+type BlueprintStatus = 'draft' | 'active' | 'paused' | 'completed';
+
+type BlueprintInstance = {
+  id: string;
+  template_key: string;
+  name: string;
+  status: string;
+  configuration: Record<string, unknown>;
+  created_at: string;
+};
+
+type BlueprintManagerProps = {
+  instances: BlueprintInstance[];
+  canManage: boolean;
+};
+
+const blueprintStatuses: BlueprintStatus[] = ['draft', 'active', 'paused', 'completed'];
+
+function normalizeStatus(value: string): BlueprintStatus {
+  return blueprintStatuses.includes(value as BlueprintStatus) ? (value as BlueprintStatus) : 'draft';
+}
+
+function parseChecklist(configuration: Record<string, unknown>): string[] {
+  const raw = configuration?.checklist;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) => (typeof item === 'string' ? item.trim() : ''))
+    .filter((item) => item.length > 0);
+}
+
+function toChecklistLines(checklist: string[]) {
+  return checklist.join('\n');
+}
+
+function fromChecklistLines(value: string): string[] {
+  return value
+    .split('\n')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
+
+function pickTemplate(template_key: string): GrowthBlueprintTemplate | undefined {
+  return getBlueprintTemplate(template_key);
+}
+
+export default function BlueprintManager({ instances, canManage }: BlueprintManagerProps) {
   const router = useRouter();
   const [busy, setBusy] = useState('');
   const [search, setSearch] = useState('');
   const [industryFilter, setIndustryFilter] = useState('');
   const [outcomeFilter, setOutcomeFilter] = useState('');
+  const [message, setMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [editingId, setEditingId] = useState('');
+  const [editingName, setEditingName] = useState('');
+  const [editingStatus, setEditingStatus] = useState<BlueprintStatus>('draft');
+  const [editingChecklist, setEditingChecklist] = useState('');
+
+  const playbooksRef = useRef<HTMLElement | null>(null);
+  const editorRef = useRef<HTMLDivElement | null>(null);
+
   const industries = useMemo(() => getBlueprintIndustries(), []);
   const outcomes = useMemo(() => getBlueprintOutcomes(), []);
 
@@ -28,28 +85,157 @@ export default function BlueprintManager({ instances, canManage }: { instances: 
   );
 
   const isFiltered = Boolean(search.trim() || industryFilter || outcomeFilter);
+
+  const hasMessage = message || errorMessage;
+
   const clearFilters = () => {
     setSearch('');
     setIndustryFilter('');
     setOutcomeFilter('');
   };
 
-  async function create(templateKey: string) {
+  function clearToast() {
+    if (message) setMessage('');
+    if (errorMessage) setErrorMessage('');
+  }
+
+  async function create(templateKey: string, templateName: string) {
     setBusy(templateKey);
-    const response = await fetch('/api/blueprints', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ templateKey }) });
-    const body = await response.json().catch(() => ({}));
-    setBusy('');
-    if (!response.ok) return window.alert(body.error || 'Could not create the blueprint.');
-    router.refresh();
+    clearToast();
+
+    try {
+      const response = await fetch('/api/blueprints', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ templateKey }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setErrorMessage(body.error || 'Could not create the blueprint.');
+      } else {
+        setMessage(`“${templateName}” added to Workspace Playbooks.`);
+        playbooksRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        playbooksRef.current?.focus();
+        router.refresh();
+      }
+    } finally {
+      setBusy('');
+    }
   }
-  async function setStatus(id: string, status: string) {
-    setBusy(id);
-    const response = await fetch('/api/blueprints', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, status }) });
-    const body = await response.json().catch(() => ({}));
-    setBusy('');
-    if (!response.ok) return window.alert(body.error || 'Could not update the blueprint.');
-    router.refresh();
+
+  async function setStatus(instanceId: string, status: BlueprintStatus) {
+    setBusy(instanceId);
+    clearToast();
+
+    try {
+      const response = await fetch('/api/blueprints', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: instanceId, status }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setErrorMessage(body.error || 'Could not update the blueprint.');
+      } else {
+        setMessage('Blueprint status updated.');
+        router.refresh();
+      }
+    } finally {
+      setBusy('');
+    }
   }
+
+function beginEdit(instance: BlueprintInstance) {
+  const checklist = parseChecklist(instance.configuration);
+  setEditingId(instance.id);
+  setEditingName(instance.name);
+    setEditingStatus(normalizeStatus(instance.status));
+    setEditingChecklist(toChecklistLines(checklist));
+    setMessage('');
+    setErrorMessage('');
+    setTimeout(() => {
+      editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      editorRef.current?.querySelector<HTMLElement>('input')?.focus();
+    }, 0);
+  }
+
+  function cancelEdit() {
+    setEditingId('');
+    setEditingName('');
+    setEditingStatus('draft');
+    setEditingChecklist('');
+  }
+
+  async function save(instance: BlueprintInstance) {
+    setBusy(`${instance.id}:save`);
+    clearToast();
+
+    const payload = {
+      id: instance.id,
+      name: editingName.trim() || instance.name,
+      status: editingStatus,
+      checklist: fromChecklistLines(editingChecklist),
+    };
+
+    try {
+      const response = await fetch('/api/blueprints', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setErrorMessage(body.error || 'Could not save the blueprint.');
+      } else {
+        setMessage('Playbook changes saved.');
+        cancelEdit();
+        router.refresh();
+      }
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function remove(instance: BlueprintInstance, event: FormEvent) {
+    event.preventDefault();
+
+    if (!window.confirm('Delete this playbook? This removes this workspace instance and cannot be undone.')) return;
+
+    setBusy(`${instance.id}:delete`);
+    clearToast();
+
+    try {
+      const response = await fetch('/api/blueprints', {
+        method: 'DELETE',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: instance.id }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setErrorMessage(body.error || 'Could not delete the playbook.');
+      } else {
+        setMessage('Playbook deleted.');
+        if (editingId === instance.id) {
+          cancelEdit();
+        }
+        router.refresh();
+      }
+    } finally {
+      setBusy('');
+    }
+  }
+
+  const instanceTemplates = useMemo(
+    () =>
+      new Map<string, GrowthBlueprintTemplate>(
+        instances
+          .map((instance) => pickTemplate(instance.template_key))
+          .filter((template): template is GrowthBlueprintTemplate => Boolean(template))
+          .map((template) => [template.key, template])
+      ),
+    [instances]
+  );
+
   return (
     <div className="stack">
       <div className="card">
@@ -65,6 +251,7 @@ export default function BlueprintManager({ instances, canManage }: { instances: 
             </button>
           </div>
         </div>
+
         <section className="libraryfilters">
           <input
             aria-label="Search growth blueprints"
@@ -88,7 +275,13 @@ export default function BlueprintManager({ instances, canManage }: { instances: 
               </option>
             ))}
           </select>
-          <select aria-label="Filter by outcome" className="input" name="outcome" value={outcomeFilter} onChange={(event) => setOutcomeFilter(event.target.value)}>
+          <select
+            aria-label="Filter by outcome"
+            className="input"
+            name="outcome"
+            value={outcomeFilter}
+            onChange={(event) => setOutcomeFilter(event.target.value)}
+          >
             <option value="">All outcomes</option>
             {outcomes.map((outcome) => (
               <option key={outcome} value={outcome}>
@@ -98,6 +291,7 @@ export default function BlueprintManager({ instances, canManage }: { instances: 
           </select>
         </section>
       </div>
+
       <section className="blueprints">
         {templates.map((template) => (
           <article className="card blueprint" key={template.key}>
@@ -106,7 +300,7 @@ export default function BlueprintManager({ instances, canManage }: { instances: 
             <strong>{template.outcome}</strong>
             <ul>{template.items.map((item) => <li key={item}>{item}</li>)}</ul>
             {canManage && (
-              <button className="btn" disabled={Boolean(busy)} onClick={() => create(template.key)}>
+              <button className="btn" disabled={Boolean(busy)} onClick={() => create(template.key, template.name)}>
                 {busy === template.key ? 'Creating...' : 'Use blueprint'}
               </button>
             )}
@@ -114,43 +308,155 @@ export default function BlueprintManager({ instances, canManage }: { instances: 
         ))}
         {!templates.length ? <p className="muted">No blueprints match your filters.</p> : null}
       </section>
-      <section className="card table-card">
+
+      <section className="card table-card" ref={playbooksRef} tabIndex={-1}>
         <div className="sectionhead">
           <div>
             <h2>Workspace playbooks</h2>
             <p className="muted">Each instance is independently configurable and scoped to this workspace.</p>
           </div>
         </div>
+
+        {hasMessage ? <div className={`notice ${errorMessage ? 'notice-error' : 'success'}`}>{errorMessage || message}</div> : null}
+
         {instances.length ? (
           <div className="data-table">
             <div className="data-row data-head">
               <span>Name</span>
               <span>Template</span>
               <span>Status</span>
-              <span>Control</span>
+              <span>Actions</span>
             </div>
-            {instances.map((instance) => (
-              <div className="data-row" key={instance.id}>
-                <b>{instance.name}</b>
-                <span>{instance.template_key.replaceAll('-', ' ')}</span>
-                <span className={`status ${instance.status}`}>{instance.status}</span>
-                <span>
-                  {canManage && (
-                    <select
-                      className="input compact"
-                      value={instance.status}
-                      disabled={busy === instance.id}
-                      onChange={(event) => setStatus(instance.id, event.target.value)}
-                    >
-                      <option value="draft">Draft</option>
-                      <option value="active">Active</option>
-                      <option value="paused">Paused</option>
-                      <option value="completed">Completed</option>
-                    </select>
-                  )}
-                </span>
-              </div>
-            ))}
+            {instances.map((instance) => {
+              const template = instanceTemplates.get(instance.template_key);
+              const configuration = parseChecklist(instance.configuration);
+              const isEditing = editingId === instance.id;
+              const currentStatus = normalizeStatus(instance.status);
+
+              return (
+                <div className="blueprint-row-wrap" key={instance.id}>
+                  <div className="data-row">
+                    <span>
+                      <b>{instance.name}</b>
+                      <small>{template ? template.name : instance.template_key.replaceAll('-', ' ')}</small>
+                    </span>
+                    <span>{template ? template.name : instance.template_key.replaceAll('-', ' ')}</span>
+                    <span>
+                      <span className={`status ${currentStatus}`}>{currentStatus}</span>
+                    </span>
+                    <span className="rowactions">
+                      <select
+                        className="input compact"
+                        value={currentStatus}
+                        disabled={!canManage || busy === instance.id}
+                        onChange={(event) => setStatus(instance.id, event.target.value as BlueprintStatus)}
+                      >
+                        {blueprintStatuses.map((status) => (
+                          <option key={status} value={status}>
+                            {status}
+                          </option>
+                        ))}
+                      </select>
+                      {canManage ? (
+                        <>
+                          <button className="mini" onClick={() => beginEdit(instance)} disabled={busy !== ''}>
+                            Configure
+                          </button>
+                          <form onSubmit={(event) => remove(instance, event)} style={{ margin: 0 }}>
+                            <button className="mini danger" type="submit" disabled={busy !== ''}>
+                              Delete
+                            </button>
+                          </form>
+                        </>
+                      ) : null}
+                    </span>
+                  </div>
+                  {isEditing ? (
+                    <div className="blueprint-editor-row" ref={editorRef}>
+                      <div className="card editcard">
+                        <div className="sectionhead">
+                          <div>
+                            <h3>Configure playbook</h3>
+                            <p className="muted">Editing: {instance.name}</p>
+                          </div>
+                        </div>
+
+                        <div className="formgrid">
+                          <label className="field">
+                            <span>Playbook name</span>
+                            <input
+                              className="input"
+                              value={editingName}
+                              onChange={(event) => setEditingName(event.target.value)}
+                              aria-label="Playbook name"
+                              disabled={busy === `${instance.id}:save`}
+                            />
+                          </label>
+                          <label className="field">
+                            <span>Status</span>
+                            <select
+                              className="input"
+                              value={editingStatus}
+                              onChange={(event) => setEditingStatus(event.target.value as BlueprintStatus)}
+                              aria-label="Playbook status"
+                              disabled={busy === `${instance.id}:save`}
+                            >
+                              {blueprintStatuses.map((status) => (
+                                <option key={status} value={status}>
+                                  {status}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        </div>
+
+                        <div className="template-context">
+                          <p>
+                            <strong>Template:</strong> {template?.name ?? instance.template_key}
+                          </p>
+                          <p>
+                            <strong>Outcome:</strong> {template?.outcome ?? 'Unknown'}
+                          </p>
+                          <p>
+                            <strong>Industry:</strong> {template?.industry ?? 'Unknown'}
+                          </p>
+                          <div>
+                            <strong>Recommended workflow steps</strong>
+                            <ul>
+                              {(template?.items ?? configuration).map((item) => (
+                                <li key={item}>{item}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+
+                        <label className="field full">
+                          <span>Checklist/workflow steps</span>
+                          <textarea
+                            className="input"
+                            value={editingChecklist}
+                            onChange={(event) => setEditingChecklist(event.target.value)}
+                            rows={6}
+                            aria-label="Checklist and workflow steps"
+                            disabled={busy === `${instance.id}:save`}
+                            placeholder="Add one step per line"
+                          />
+                        </label>
+
+                        <div className="actions">
+                          <button className="btn" onClick={() => save(instance)} disabled={busy === `${instance.id}:save`}>
+                            {busy === `${instance.id}:save` ? 'Saving...' : 'Save changes'}
+                          </button>
+                          <button className="btn secondary" type="button" onClick={cancelEdit} disabled={busy === `${instance.id}:save`}>
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <p className="muted">No blueprint instances yet. Choose a template above to create one.</p>
