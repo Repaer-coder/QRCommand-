@@ -61,28 +61,25 @@ export default function QRLibraryActions({ id, slug, name, status, style, canDel
 
   return (
     <div className="qr-library-actions">
-      <a className="codeurl" href={shortLink} target="_blank" rel="noopener noreferrer">
+      <a className="qr-library-link codeurl" href={shortLink} target="_blank" rel="noopener noreferrer">
         {shortLink}
       </a>
       {qrImage ? (
-        <a href={shortLink} target="_blank" rel="noopener noreferrer">
+        <div className="qr-library-preview">
+          <a href={shortLink} target="_blank" rel="noopener noreferrer" className="qr-library-preview-link">
           <img
             alt={`Permanent QR for ${slug}`}
             src={qrImage}
-            width={130}
-            height={130}
-            style={{ background: '#ffffff', borderRadius: '10px', padding: '6px', border: '1px solid var(--line)' }}
+            className="qr-library-preview-image"
           />
-        </a>
+          </a>
+        </div>
       ) : (
-        <div
-          className="qrbox"
-          style={{ width: 130, minHeight: 130, margin: '2px 0 0', padding: 8, display: 'grid', placeItems: 'center' }}
-        >
+        <div className="qr-library-preview qr-library-preview-loading">
           <small className="muted">Generating QR...</small>
         </div>
       )}
-      <div className="actions">
+      <div className="qr-library-primary-actions">
         <a className="mini" href={shortLink} target="_blank" rel="noopener noreferrer">
           Test link
         </a>
@@ -90,7 +87,7 @@ export default function QRLibraryActions({ id, slug, name, status, style, canDel
           Download
         </button>
       </div>
-      <div className="rowactions">
+      <div className="qr-library-management-actions">
         <a className="mini" href={`/dashboard/qr-codes/${id}`}>
           Edit
         </a>

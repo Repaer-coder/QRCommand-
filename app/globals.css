@@ -235,13 +235,27 @@ textarea.input { resize: vertical; }
 
 .libraryfilters { display: grid; grid-template-columns: 1.5fr repeat(2, .7fr) auto; gap: 10px; margin: 20px 0; }
 .librarygrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 15px; }
-.librarycard { display: flex; flex-direction: column; min-height: 350px; box-shadow: none; }
+.librarycard { display: flex; flex-direction: column; min-height: 350px; box-shadow: none; padding: 28px; gap: 16px; }
 .librarytop { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .librarytop h3 { margin-top: 14px; }
 .destination, .truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
 .librarymetrics, .location-meta { display: flex; justify-content: space-between; gap: 15px; color: var(--muted); font-size: .77rem; margin: 18px 0; }
 .librarymetrics b { color: var(--text); }
-.librarycard .rowactions { margin-top: auto; }
+.qr-library-actions { display: flex; flex-direction: column; gap: 16px; }
+.qr-library-link { width: 100%; display: block; }
+.qr-library-preview { width: 176px; aspect-ratio: 1/1; margin: 0 auto; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 14px; padding: 8px; background: #fff; }
+.qr-library-preview-link { display: grid; place-items: center; width: 100%; height: 100%; }
+.qr-library-preview-image { width: 100%; height: auto; background: #ffffff; border-radius: 10px; }
+.qr-library-preview-loading { width: 176px; min-height: 176px; color: var(--muted); }
+.qr-library-primary-actions,
+.qr-library-management-actions { display: grid; gap: 10px; align-items: stretch; }
+.qr-library-primary-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.qr-library-management-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.qr-library-primary-actions .mini,
+.qr-library-management-actions .mini,
+.qr-library-primary-actions a,
+.qr-library-management-actions a { width: 100%; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; text-align: center; }
+.librarycard .qr-library-actions { margin-top: auto; }
 
 .bar-chart { display: grid; align-items: flex-end; gap: 3px; height: 260px; padding: 24px 0 0; border-bottom: 1px solid var(--line); }
 .bar-column { height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 6px; }
