@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import React from 'react';
 import {
   BarChart3,
   Bot,
@@ -11,7 +12,6 @@ import {
   Settings,
   Sparkles,
   Users,
-  Utensils,
   Webhook,
 } from 'lucide-react';
 import { hasEntitlement, plans, type FeatureName, type PlanName } from '@/lib/plans';
@@ -22,9 +22,7 @@ const items = [
   { key: 'library', label: 'QR library', href: '/dashboard/qr-codes', icon: QrCode },
   { key: 'analytics', label: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
   { key: 'blueprints', label: 'Blueprints', href: '/dashboard/blueprints', icon: LayoutGrid, feature: 'blueprints.growth' },
-  { key: 'restaurant', label: 'Restaurant hub', href: '/dashboard/restaurant', icon: Utensils, feature: 'restaurant.hub' },
   { key: 'reviews', label: 'Reviews', href: '/dashboard/reviews', icon: Sparkles, feature: 'blueprints.growth' },
-  { key: 'social', label: 'Social conversion', href: '/dashboard/social', icon: GitBranch, feature: 'blueprints.growth' },
   { key: 'locations', label: 'Locations', href: '/dashboard/locations', icon: Building2 },
   { key: 'team', label: 'Team', href: '/dashboard/team', icon: Users, feature: 'team.manager' },
   { key: 'automation', label: 'Automation', href: '/dashboard/automation', icon: GitBranch, feature: 'automation.engine' },
