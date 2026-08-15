@@ -21,6 +21,7 @@ export default function SupportPage() {
     <LegalPageLayout
       title="Support and Contact"
       description="Reach the QR Command team for support requests and operational help."
+      currentPath="/support"
       sections={sections}
     >
       <section id="help">

@@ -19,6 +19,7 @@ export default function AcceptableUsePage() {
     <LegalPageLayout
       title="Acceptable Use Policy"
       description="Use these policies to protect customers, maintain safe operations, and avoid misuse of workspace tooling."
+      currentPath="/acceptable-use"
       sections={sections}
     >
       <section id="overview">

@@ -24,7 +24,12 @@ const sections = [
 
 export default function PrivacyPage() {
   return (
-    <LegalPageLayout title="Privacy Policy" description="How QR Command handles account, workspace, and scan information." sections={sections}>
+    <LegalPageLayout
+      title="Privacy Policy"
+      description="How QR Command handles account, workspace, and scan information."
+      currentPath="/privacy"
+      sections={sections}
+    >
       <section id="overview">
         <h2>Data categories</h2>
         <p>We process account data, workspace metadata, campaign records, destinations, scan events, and support/administrative records.</p>

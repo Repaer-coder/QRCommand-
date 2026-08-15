@@ -2,63 +2,93 @@ import React from 'react';
 import Link from 'next/link';
 import { BarChart3, Building2, GitBranch, QrCode, ShieldCheck, Sparkles } from 'lucide-react';
 import LegalLinks from '@/components/legal-links';
+import { getServerI18n } from '@/lib/i18n/page';
 
 const cells = Array.from({ length: 81 });
-const features = [
-  [QrCode, 'Permanent QR infrastructure', 'Print once. Update the final destination later while the encoded QR Command link stays stable.'],
-  [BarChart3, 'Canonical scan intelligence', 'Use stored scan events across dashboards, location comparisons, automations, and AI recommendations.'],
-  [Building2, 'Location-aware operations', 'Connect campaigns to real operating locations and give teams role-appropriate control.'],
-  [GitBranch, 'Business growth systems', 'Build restaurant, reputation, social, and reusable blueprint flows around outcomes.'],
-  [ShieldCheck, 'Secure commercial boundaries', 'Organization isolation, server-side secrets, webhook truth, and approval-gated consequential actions.'],
-  [Sparkles, 'Evidence-grounded AI', 'Draft campaigns and surface opportunities from authorized real data without fabricating conversions or revenue.'],
-] as const;
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  const { t } = await getServerI18n();
   const { error } = await searchParams;
+  const featureDefs = [
+    [
+      QrCode,
+      t('qr.builder.dynamicCampaign'),
+      t('home.operatingSystemDescription'),
+    ],
+    [
+      BarChart3,
+      t('navigation.platform'),
+      t('pricing.description'),
+    ],
+    [
+      Building2,
+      t('dashboard.overview.commercialTitle'),
+      t('dashboard.overview.campaignPulseSubtext'),
+    ],
+    [
+      GitBranch,
+      t('home.scanLayer.title'),
+      t('home.scanLayer.value'),
+    ],
+    [
+      ShieldCheck,
+      t('dashboard.qrLibrary.permanentLink'),
+      t('qr.library.permanentLink'),
+    ],
+    [
+      Sparkles,
+      t('dashboard.ai.header'),
+      t('dashboard.ai.badge'),
+    ],
+  ] as const;
+
+  const modules = [
+    [t('home.systemCard.restaurant'), t('home.systemCard.restaurantDescription')],
+    [t('home.systemCard.reputation'), t('home.systemCard.reputationDescription')],
+    [t('home.systemCard.social'), t('home.systemCard.socialDescription')],
+    [t('home.systemCard.operations'), t('home.systemCard.operationsDescription')],
+  ] as const;
 
   return (
     <>
       <main className="container">
-        {error && <p className="notice">That QR campaign is unavailable, paused, expired, or not configured correctly.</p>}
+        {error && <p className="notice">{t('home.errorNotice')}</p>}
         <section className="hero">
           <div>
-            <div className="eyebrow">Business optimization through every scan</div>
+            <div className="eyebrow">{t('home.eyebrow')}</div>
             <h1>
-              QR codes are not the product. <span>What they activate is.</span>
+              {t('home.heroTitle').split('\n')[0]} <span>{t('home.heroTitle').split('\n')[1]}</span>
             </h1>
-            <p>
-              Build permanent QR entry points for customer journeys, locations, restaurant operations, reputation, social conversion,
-              analytics, automation, and responsible AI recommendations.
-            </p>
+            <p>{t('home.heroDescription')}</p>
             <div className="actions">
               <Link className="btn" href="/login?mode=signup">
-                Create your workspace
+                {t('home.cta.createWorkspace')}
               </Link>
               <Link className="btn secondary" href="/pricing">
-                Explore the four tiers
+                {t('home.cta.explorePlans')}
               </Link>
             </div>
           </div>
           <div className="card hero-visual">
             <div className="floating-metric one">
-              <small>Destination</small>
-              <b>Editable</b>
+              <small>{t('home.destination.title')}</small>
+              <b>{t('home.destination.value')}</b>
             </div>
             <div className="mockqr">{cells.map((_, index) => <i key={index} />)}</div>
             <div className="floating-metric two">
-              <small>Scan layer</small>
-              <b>Measured</b>
+              <small>{t('home.scanLayer.title')}</small>
+              <b>{t('home.scanLayer.value')}</b>
             </div>
           </div>
         </section>
         <section id="platform" className="section">
           <div className="section-lead">
-            <div className="eyebrow">One operating system</div>
-            <h2>From printed placement to business intelligence.</h2>
-            <p>QR Command keeps campaign control, analytics, locations, team, billing, workflows, and intelligence inside one secure workspace.</p>
+            <div className="eyebrow">{t('navigation.platform')}</div>
+            <h2>{t('home.operatingSystemTitle')}</h2>
+            <p>{t('home.operatingSystemDescription')}</p>
           </div>
           <div className="grid3">
-            {features.map(([Icon, title, description]) => (
+            {featureDefs.map(([Icon, title, description]) => (
               <article className="card feature" key={title}>
                 <div className="feature-icon">
                   <Icon size={22} />
@@ -71,40 +101,30 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ e
         </section>
         <section id="systems" className="section">
           <div className="section-lead">
-            <div className="eyebrow">Operational growth loops</div>
-            <h2>Design the journey after the scan.</h2>
+            <div className="eyebrow">{t('navigation.systems')}</div>
+            <h2>{t('home.systemCard.operations')}</h2>
           </div>
           <div className="landing-journey">
-            <article className="card">
-              <h3>Restaurant</h3>
-              <p className="muted">Menu discovery, order destinations, review prompts, and return visits.</p>
-            </article>
-            <article className="card">
-              <h3>Reputation</h3>
-              <p className="muted">Public review paths, private feedback, and referral follow-up.</p>
-            </article>
-            <article className="card">
-              <h3>Social</h3>
-              <p className="muted">Physical placement to social engagement and measurable next steps.</p>
-            </article>
-            <article className="card">
-              <h3>Operations</h3>
-              <p className="muted">Safe triggers, validated actions, signed webhooks, and audit history.</p>
-            </article>
+            {modules.map(([title, description]) => (
+              <article className="card" key={title}>
+                <h3>{title}</h3>
+                <p className="muted">{description}</p>
+              </article>
+            ))}
           </div>
         </section>
         <section className="section">
           <div className="card cta-band">
-            <h2>Start with one permanent campaign. Grow into a business command layer.</h2>
+            <h2>{t('home.grow')}</h2>
             <Link className="btn" href="/login?mode=signup">
-              Open QR Command
+              {t('home.cta.createWorkspace')}
             </Link>
           </div>
         </section>
       </main>
       <footer className="footer">
         <div className="container footer-links">
-          <p>QR Command. Dynamic QR infrastructure for measurable business operations.</p>
+          <p>{t('metadata.description')}</p>
           <LegalLinks />
         </div>
       </footer>

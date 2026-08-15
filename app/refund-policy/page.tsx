@@ -23,6 +23,7 @@ export default function RefundPolicyPage() {
     <LegalPageLayout
       title="Subscription Cancellation and Refund Policy"
       description="Cancellation and refund terms for paid QR Command subscriptions."
+      currentPath="/refund-policy"
       sections={sections}
     >
       <section id="overview">

@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { renderToString } from 'react-dom/server';
+import { renderToReadableStream, renderToString } from 'react-dom/server';
 import TermsPage from '@/app/terms/page';
 import PrivacyPage from '@/app/privacy/page';
 import RefundPolicyPage from '@/app/refund-policy/page';
@@ -41,27 +41,42 @@ describe('legal pages and links', () => {
     { page: SupportPage, heading: 'Support and Contact', hasSupportEmail: true },
   ];
 
-  it('renders legal routes with required headings and operator details', () => {
-    legalPages.forEach(({ page, heading, hasSupportEmail }) => {
-      const html = renderToString(React.createElement(page));
+  async function renderPage(page: () => Promise<React.ReactNode> | React.ReactNode) {
+    const element = await page();
+    const stream = await renderToReadableStream(element as React.ReactElement);
+    const decoder = new TextDecoder();
+    const chunks: string[] = [];
+    const reader = stream.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(decoder.decode(value, { stream: true }));
+    }
+    chunks.push(decoder.decode());
+    return chunks.join('');
+  }
+
+  it('renders legal routes with required headings and operator details', async () => {
+    for (const { page, heading, hasSupportEmail } of legalPages) {
+      const html = await renderPage(page);
       expect(html).toContain(`<h1>${heading}</h1>`);
       expect(html).toContain(legalContact.effectiveDate);
       if (hasSupportEmail) {
         expect(html).toContain(legalContact.supportEmail);
       }
-    });
+    }
 
-    const supportHtml = renderToString(React.createElement(SupportPage));
+    const supportHtml = await renderPage(SupportPage);
     expect(supportHtml).toContain(legalContact.operator);
   });
 
-  it('does not render secrets in legal pages', () => {
+  it('does not render secrets in legal pages', async () => {
     const secretPatterns = [/sk_[A-Za-z0-9]{10,}/, /pk_[A-Za-z0-9]{10,}/, /SUPABASE_SERVICE_ROLE_KEY/, /STRIPE_SECRET/, /api\s+secret/i];
 
-    legalPages.forEach(({ page }) => {
-      const html = renderToString(React.createElement(page));
+    for (const { page } of legalPages) {
+      const html = await renderPage(page);
       secretPatterns.forEach((pattern) => expect(html).not.toMatch(pattern));
-    });
+    }
   });
 
   it('renders legal links in the public homepage footer', async () => {
@@ -71,13 +86,15 @@ describe('legal pages and links', () => {
     legalPolicyLinks.forEach((link) => {
       expect(html).toContain(`href="${link.href}"`);
       const expectedLabel =
-        link.label === 'Refunds & Cancellation' ? 'Refunds &amp; Cancellation' : link.label;
+        link.label === 'Refunds & Cancellation'
+          ? 'Subscription Cancellation and Refund Policy'
+          : link.label;
       expect(html).toContain(expectedLabel);
     });
   });
 
   it('shows cancellation and refund language on pricing and billing', async () => {
-    const pricingHtml = renderToString(React.createElement(Pricing));
+    const pricingHtml = renderToString(await Pricing());
     expect(pricingHtml).toContain('Subscriptions renew monthly until canceled');
     expect(pricingHtml).toContain('/refund-policy');
     expect(pricingHtml).toContain('non-refundable');
@@ -118,9 +135,9 @@ describe('legal pages and links', () => {
     expect(billingHtml).toContain('non-refundable');
   });
 
-  it('adds legal links to login page via auth form', () => {
+  it('adds legal links to login page via auth form', async () => {
     vi.mocked(useSearchParams).mockReturnValue(asReadonlySearchParams('mode=signup'));
-    const loginHtml = renderToString(React.createElement(LoginPage));
+    const loginHtml = renderToString(await LoginPage());
 
     legalPolicyLinks.forEach((link) => {
       expect(loginHtml).toContain(`href="${link.href}"`);

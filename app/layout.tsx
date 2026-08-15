@@ -1,12 +1,34 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import SiteNav from '@/components/site-nav';
+import I18nProvider from '@/components/i18n-provider';
+import { createServerLocaleContext, getLocalePayload } from '@/lib/i18n/server';
+import { localeDirections } from '@/lib/i18n/config';
 
-export const metadata: Metadata = {
-  title: { default: 'QR Command | Business Optimization Through Every Scan', template: '%s | QR Command' },
-  description: 'Create permanent dynamic QR campaigns, connect locations, measure real scan activity, and operate growth workflows from one business command center.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { locale, dictionary } = await getLocalePayload();
+  const { t } = createServerLocaleContext(locale, dictionary);
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body><SiteNav />{children}</body></html>;
+  return {
+    title: {
+      default: t('metadata.title'),
+      template: `%s | ${t('metadata.title')}`,
+    },
+    description: t('metadata.description'),
+  };
+}
+
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const payload = await getLocalePayload();
+
+  return (
+    <html lang={payload.locale} dir={localeDirections[payload.locale] ?? 'ltr'}>
+      <body>
+        <I18nProvider locale={payload.locale} dictionary={payload.dictionary}>
+          <SiteNav />
+          {children}
+        </I18nProvider>
+      </body>
+    </html>
+  );
 }

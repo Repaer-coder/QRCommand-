@@ -25,14 +25,15 @@ const sections = [
   { id: 'contact', title: 'Contact' },
 ];
 
-export default function TermsPage() {
-  return (
-    <LegalPageLayout
-      title="Terms of Service"
-      description="Welcome to QR Command. By accessing this platform you agree to these terms."
-      sections={sections}
-    >
-      <section id="acceptance">
+export default async function TermsPage() {
+  return await LegalPageLayout({
+    title: 'Terms of Service',
+    description: 'Welcome to QR Command. By accessing this platform you agree to these terms.',
+    currentPath: '/terms',
+    sections,
+    children: (
+      <>
+        <section id="acceptance">
         <h2>Acceptance of terms</h2>
         <p>
           By creating or using a QR Command account, you agree to these Terms of Service and agree that the contract forms once you
@@ -120,6 +121,7 @@ export default function TermsPage() {
         <p>These terms are governed by the laws of the State of {legalContact.governingState}, in the {legalContact.governingCountry}.</p>
         <p>For billing and legal notices in this contract, use the email above.</p>
       </section>
-    </LegalPageLayout>
-  );
+      </>
+    ),
+  });
 }

@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React from 'react';
 
@@ -8,16 +8,18 @@ import { createClient } from '@/lib/supabase/client';
 import { safeReturnPath } from '@/lib/paths';
 import LegalLinks from '@/components/legal-links';
 import { legalPolicyLinks } from '@/lib/legal';
+import { useI18n } from '@/components/i18n-provider';
 
-type Mode = 'signin' | 'signup';
+import type { LocaleContext } from '@/lib/i18n/translate';
 
 export default function AuthForm() {
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const next = safeReturnPath(searchParams.get('next'));
-  const [mode, setMode] = useState<Mode>(searchParams.get('mode') === 'signup' ? 'signup' : 'signin');
+  const [mode, setMode] = useState<'signin' | 'signup'>(searchParams.get('mode') === 'signup' ? 'signup' : 'signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [message, setMessage] = useState(searchParams.get('error') ? 'The sign-in link could not be completed. Please try again.' : '');
+  const [message, setMessage] = useState(searchParams.get('error') ? t('auth.errorSignInUnavailable') : '');
   const [loading, setLoading] = useState(false);
   const [acceptedPolicies, setAcceptedPolicies] = useState(false);
 
@@ -33,16 +35,14 @@ export default function AuthForm() {
       });
       const payload = (await response.json().catch(() => ({}))) as { error?: string; ok?: boolean };
       setLoading(false);
-      if (!response.ok) return setMessage(payload.error ?? 'Sign in failed.');
+      if (!response.ok) return setMessage(payload.error ?? t('auth.errorSignInUnavailable'));
       window.location.assign(next);
       return;
     }
 
     if (!acceptedPolicies) {
       setLoading(false);
-      return setMessage(
-        'Please accept the Terms of Service, Privacy Policy, and Refund policy before creating your account.'
-      );
+      return setMessage(t('auth.consentRequired'));
     }
 
     const supabase = createClient();
@@ -54,33 +54,49 @@ export default function AuthForm() {
     setLoading(false);
     if (result.error) return setMessage(result.error.message);
     if (!result.data.session) {
-      setMessage('Check your email to confirm the account, then return here to sign in.');
+      setMessage(t('auth.checkEmailSignup'));
       return;
     }
     window.location.assign(next);
   }
 
   async function resetPassword() {
-    if (!email) return setMessage('Enter your email address first.');
+    if (!email) return setMessage(t('auth.forgotMessage'));
     setLoading(true);
     const result = await createClient().auth.resetPasswordForEmail(email, {
       redirectTo: `${location.origin}/auth/callback?next=${encodeURIComponent('/auth/update-password')}`,
     });
     setLoading(false);
-    setMessage(result.error ? result.error.message : 'Check your email for a secure password reset link.');
+    setMessage(result.error ? result.error.message : t('auth.passwordResetSent'));
   }
 
   return (
     <div className="authcard card">
-      <div className="eyebrow">Secure business workspace</div>
-      <h1>{mode === 'signin' ? 'Welcome back' : 'Build your QR command center'}</h1>
-      <p className="muted">Create permanent campaign links, connect locations, and turn every scan into useful business data.</p>
+      <LocaleHeader />
+      <h1>{mode === 'signin' ? t('auth.welcome') : t('auth.buildCenter')}</h1>
+      <p className="muted">{t('auth.subtitle')}</p>
       <form onSubmit={submit} className="authform">
-        <label>Email<input className="input" type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@company.com" /></label>
-        <label>Password<input className="input" type="password" minLength={8} required autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="At least 8 characters" /></label>
-        <button className="btn" disabled={loading}>{loading ? 'Working...' : mode === 'signin' ? 'Sign in' : 'Create account'}</button>
+        <label>
+          {t('auth.emailLabel')}
+          <input className="input" type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder={t('auth.emailLabel')} />
+        </label>
+        <label>
+          {t('auth.passwordLabel')}
+          <input
+            className="input"
+            type="password"
+            minLength={8}
+            required
+            autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder={t('auth.passwordLabel')}
+          />
+        </label>
+        <button className="btn" disabled={loading}>{loading ? t('auth.working') : (mode === 'signin' ? t('auth.signInSubmit') : t('auth.createSubmit'))}</button>
       </form>
       {message && <p className="notice" role="status">{message}</p>}
+
       {mode === 'signup' && (
         <label className="checkfield auth-consent">
           <input
@@ -91,33 +107,53 @@ export default function AuthForm() {
             required
           />
           <span>
-            By creating an account, I agree to the{' '}
+            {t('auth.consentPrefix')}{' '}
             <a href={legalPolicyLinks[0].href} target="_blank" rel="noopener noreferrer">
-              {legalPolicyLinks[0].label}
+              {t('legalPages.terms.title')}
             </a>{' '}
-            and{' '}
+            {t('auth.consentAnd')}{' '}
             <a href={legalPolicyLinks[3].href} target="_blank" rel="noopener noreferrer">
-              {legalPolicyLinks[3].label}
+              {t('legalPages.refund.title')}
             </a>{' '}
-            and acknowledge the{' '}
+            {t('auth.consentAcknowledge')}{' '}
             <a href={legalPolicyLinks[1].href} target="_blank" rel="noopener noreferrer">
-              {legalPolicyLinks[1].label}
+              {t('legalPages.privacy.title')}
             </a>{' '}
-            and{' '}
+            {t('auth.consentAnd')}
             <a href={legalPolicyLinks[2].href} target="_blank" rel="noopener noreferrer">
-              {legalPolicyLinks[2].label}
+              {' '}
+              {t('legalPages.acceptableUse.title')}
             </a>
             .
           </span>
         </label>
       )}
+
       <div className="auth-options">
         <LegalLinks />
-        <button className="textbutton" type="button" onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setMessage(''); }}>
-          {mode === 'signin' ? 'Need an account? Create one' : 'Already have an account? Sign in'}
-        </button>
-        {mode === 'signin' && <button className="textbutton" type="button" disabled={loading} onClick={resetPassword}>Forgot your password?</button>}
+        <div className="actions">
+          <button
+            className="textbutton"
+            type="button"
+            onClick={() => {
+              setMode(mode === 'signin' ? 'signup' : 'signin');
+              setMessage('');
+            }}
+          >
+            {mode === 'signin' ? t('auth.needAccount') : t('auth.alreadyHave')}
+          </button>
+          {mode === 'signin' && (
+            <button className="textbutton" type="button" disabled={loading} onClick={resetPassword}>
+              {t('auth.forgotPassword')}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
+}
+
+function LocaleHeader() {
+  const { t } = useI18n() as LocaleContext;
+  return <div className="eyebrow">{t('auth.secureWorkspace')}</div>;
 }

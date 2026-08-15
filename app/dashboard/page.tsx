@@ -5,13 +5,154 @@ import { getAnalyticsSnapshot } from '@/lib/analytics';
 import { hasEntitlement } from '@/lib/plans';
 import { createClient } from '@/lib/supabase/server';
 import { getPlanLabel, getWorkspaceContext } from '@/lib/workspace';
+import { getServerI18n } from '@/lib/i18n/page';
+
+function resolveStatusLabel(t: (key: string) => string, status: string) {
+  switch (status) {
+    case 'active':
+      return t('dashboard.qrLibrary.active');
+    case 'paused':
+      return t('dashboard.qrLibrary.paused');
+    case 'completed':
+      return t('qr.actions.archive');
+    case 'archived':
+      return t('qr.actions.archive');
+    default:
+      return status;
+  }
+}
 
 export default async function Dashboard() {
+  const { t, formatInteger } = await getServerI18n();
   const supabase = await createClient();
   const context = await getWorkspaceContext(supabase);
   if ('error' in context) return null;
+
   const snapshot = await getAnalyticsSnapshot(supabase, context.organization.id, 14);
   const recent = snapshot.campaigns.slice(0, 6);
 
-  return <div className="shell"><DashboardSidebar active="overview" userLabel={context.email} role={context.organization.role} workspaceName={context.organization.name} plan={context.organization.plan} /><main className="main"><div className="toprow"><div><div className="eyebrow">Business optimization workspace</div><h1>Command dashboard</h1><p className="muted">One operating view for campaigns, locations, performance, and growth systems.</p></div><div className="plan-chip"><span>{getPlanLabel(context.organization.plan)}</span><small>{context.organization.role}</small></div></div><div className="stats"><article className="card stat"><span>All-time scans</span><b>{snapshot.totals.scans.toLocaleString()}</b><small>{snapshot.totals.periodScans} in the last 14 days</small></article><article className="card stat"><span>Active campaigns</span><b>{snapshot.totals.activeCampaigns}</b><small>{snapshot.totals.campaigns} total campaigns</small></article><article className="card stat"><span>Locations</span><b>{snapshot.totals.locations}</b><small>Connected operating points</small></article><article className="card stat"><span>Current plan</span><b>{getPlanLabel(context.organization.plan)}</b><small>Central entitlements active</small></article></div><section className="dashboard-grid"><article className="card action-card"><div className="eyebrow">Next best action</div><h2>{snapshot.totals.campaigns ? 'Keep your strongest campaigns moving.' : 'Launch your first measurable campaign.'}</h2><p className="muted">Every QR points to a permanent QR Command link, so destinations remain editable after print.</p><div className="actions"><Link className="btn" href="/dashboard/new">Create campaign</Link><Link className="btn secondary" href="/dashboard/qr-codes">Open library</Link></div></article><article className="card trend-card"><div className="sectionhead"><h3>14-day scan pulse</h3><Link className="textlink" href="/dashboard/analytics">Full analytics</Link></div><div className="sparkbars">{snapshot.daily.map((point) => { const max = Math.max(...snapshot.daily.map((item) => item.scans), 1); return <span key={point.date} title={`${point.date}: ${point.scans} scans`} style={{ height: `${Math.max((point.scans / max) * 100, 5)}%` }} />; })}</div></article></section><section className="card table-card"><div className="table-toolbar"><div><h2>Campaign pulse</h2><p className="muted">All figures come from stored campaign and scan records.</p></div><Link className="textlink" href="/dashboard/qr-codes">Manage campaigns</Link></div>{recent.length ? <div className="data-table campaign-table"><div className="data-row data-head"><span>Campaign</span><span>Status</span><span>All-time scans</span><span>Period</span></div>{recent.map((code) => <div className="data-row" key={code.id}><Link href={`/dashboard/qr-codes/${code.id}`}><b>{code.name}</b></Link><span className={`status ${code.status}`}>{code.status}</span><span>{code.scans}</span><span>{code.periodScans}</span></div>)}</div> : <div className="empty-inline"><p>No campaigns yet. Build your first permanent QR channel in a few minutes.</p><Link className="btn" href="/dashboard/new">Create first campaign</Link></div>}</section>{hasEntitlement(context.organization.plan, 'blueprints.growth') ? <GrowthBlueprints /> : <section className="card upgrade-banner"><div><div className="eyebrow">Premium layer</div><h2>Turn campaigns into repeatable growth systems.</h2><p className="muted">Upgrade to connect restaurant, reputation, social, team, and advanced analytics workflows.</p></div><Link className="btn" href="/dashboard/billing">Explore Premium</Link></section>}</main></div>;
+  return (
+    <div className="shell">
+      <DashboardSidebar
+        active="overview"
+        userLabel={context.email}
+        role={context.organization.role}
+        workspaceName={context.organization.name}
+        plan={context.organization.plan}
+      />
+      <main className="main">
+        <div className="toprow">
+          <div>
+            <div className="eyebrow">{t('dashboard.overview.commercialTitle')}</div>
+            <h1>{t('dashboard.overview.pageTitle')}</h1>
+            <p className="muted">{t('dashboard.overview.purpose')}</p>
+          </div>
+          <div className="plan-chip">
+            <span>{getPlanLabel(context.organization.plan)}</span>
+            <small>{context.organization.role}</small>
+          </div>
+        </div>
+        <div className="stats">
+          <article className="card stat">
+            <span>{t('dashboard.qrLibrary.totalScans')}</span>
+            <b>{formatInteger(snapshot.totals.scans)}</b>
+            <small>{t('dashboard.overview.periodScans').replace('{days}', String(snapshot.periodDays))}</small>
+          </article>
+          <article className="card stat">
+            <span>{t('dashboard.overview.activeCampaigns')}</span>
+            <b>{formatInteger(snapshot.totals.activeCampaigns)}</b>
+            <small>{formatInteger(snapshot.totals.campaigns)} {t('dashboard.overview.campaignCount')}</small>
+          </article>
+          <article className="card stat">
+            <span>{t('dashboard.overview.locationTitle')}</span>
+            <b>{formatInteger(snapshot.totals.locations)}</b>
+            <small>{t('dashboard.overview.locationLabel')}</small>
+          </article>
+          <article className="card stat">
+            <span>{t('dashboard.billing.currentSubscription')}</span>
+            <b>{getPlanLabel(context.organization.plan)}</b>
+            <small>{t('dashboard.billing.notEntitled')}</small>
+          </article>
+        </div>
+
+        <section className="dashboard-grid">
+          <article className="card action-card">
+            <div className="eyebrow">{t('dashboard.overview.nextBest')}</div>
+            <h2>{snapshot.totals.campaigns ? t('dashboard.overview.keepStrong') : t('dashboard.overview.noCampaigns')}</h2>
+            <p className="muted">{t('dashboard.overview.destination')}</p>
+            <div className="actions">
+              <Link className="btn" href="/dashboard/new">
+                {t('dashboard.qrLibrary.newCampaign')}
+              </Link>
+              <Link className="btn secondary" href="/dashboard/qr-codes">
+                {t('dashboard.qrLibrary.openLibrary')}
+              </Link>
+            </div>
+          </article>
+          <article className="card trend-card">
+            <div className="sectionhead">
+              <h3>{t('dashboard.overview.scanPulseTitle')}</h3>
+              <Link className="textlink" href="/dashboard/analytics">
+                {t('dashboard.overview.openAnalytics')}
+              </Link>
+            </div>
+            <div className="sparkbars">
+              {snapshot.daily.map((point) => {
+                const max = Math.max(...snapshot.daily.map((item) => item.scans), 1);
+                return <span key={point.date} title={`${point.date}: ${formatInteger(point.scans)} ${t('dashboard.qrLibrary.scanCount')}`} style={{ height: `${Math.max((point.scans / max) * 100, 5)}%` }} />;
+              })}
+            </div>
+          </article>
+        </section>
+
+        <section className="card table-card">
+          <div className="table-toolbar">
+            <div>
+              <h2>{t('dashboard.overview.campaignPulse')}</h2>
+              <p className="muted">{t('dashboard.overview.campaignPulseSubtext')}</p>
+            </div>
+            <Link className="textlink" href="/dashboard/qr-codes">
+              {t('dashboard.qrLibrary.openLibrary')}
+            </Link>
+          </div>
+          {recent.length ? (
+            <div className="data-table campaign-table">
+              <div className="data-row data-head">
+                <span>{t('dashboard.qrLibrary.campaign')}</span>
+                <span>{t('dashboard.qrLibrary.status')}</span>
+                <span>{t('dashboard.analytics.allScans')}</span>
+                <span>{t('dashboard.analytics.period')}</span>
+              </div>
+              {recent.map((code) => (
+                <div className="data-row" key={code.id}>
+                  <Link href={`/dashboard/qr-codes/${code.id}`}><b>{code.name}</b></Link>
+                  <span className={`status ${code.status}`}>{resolveStatusLabel(t, code.status)}</span>
+                  <span>{formatInteger(code.scans)}</span>
+                  <span>{formatInteger(code.periodScans)}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-inline">
+              <p>{t('dashboard.overview.noScanYet')}</p>
+              <Link className="btn" href="/dashboard/new">
+                {t('dashboard.overview.createCampaignButton')}
+              </Link>
+            </div>
+          )}
+        </section>
+
+        {hasEntitlement(context.organization.plan, 'blueprints.growth') ? <GrowthBlueprints /> : <section className="card upgrade-banner">
+          <div>
+            <div className="eyebrow">{t('dashboard.overview.notEntitledTitle')}</div>
+            <h2>{t('dashboard.overview.notEntitledHeadline')}</h2>
+            <p className="muted">{t('dashboard.overview.notEntitledDescription')}</p>
+          </div>
+          <Link className="btn" href="/dashboard/billing">
+            {t('dashboard.overview.upgrade')}
+          </Link>
+        </section>}
+      </main>
+    </div>
+  );
 }
