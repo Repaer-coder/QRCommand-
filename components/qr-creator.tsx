@@ -2,17 +2,23 @@
 
 import QRCode from 'qrcode';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useI18n } from '@/components/i18n-provider';
 import { useRouter } from 'next/navigation';
 
-const campaignTypes = [
-  ['restaurant', 'Restaurant menu and orders'],
-  ['reviews', 'Reviews and reputation'],
-  ['social', 'Social conversion'],
-  ['website', 'Website traffic'],
-  ['lead', 'Lead capture'],
-  ['coupon', 'Offer or coupon'],
-  ['event', 'Event engagement'],
-  ['wifi', 'Guest Wi-Fi'],
+type CampaignType = {
+  value: string;
+  labelKey: string;
+};
+
+const campaignTypes: CampaignType[] = [
+  { value: 'restaurant', labelKey: 'qr.builder.goalRestaurant' },
+  { value: 'reviews', labelKey: 'qr.builder.goalReviews' },
+  { value: 'social', labelKey: 'qr.builder.goalSocial' },
+  { value: 'website', labelKey: 'qr.builder.goalWebsite' },
+  { value: 'lead', labelKey: 'qr.builder.goalLead' },
+  { value: 'coupon', labelKey: 'qr.builder.goalCoupon' },
+  { value: 'event', labelKey: 'qr.builder.goalEvent' },
+  { value: 'wifi', labelKey: 'qr.builder.goalWifi' },
 ] as const;
 
 function slugify(value: string) {
@@ -26,10 +32,11 @@ export default function QRCreator({
   locations?: { id: string; name: string }[];
   initialType?: string;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   const canvas = useRef<HTMLCanvasElement>(null);
   const [name, setName] = useState('My first campaign');
-  const [type, setType] = useState(campaignTypes.some(([key]) => key === initialType) ? initialType : 'website');
+  const [type, setType] = useState(campaignTypes.some(({ value }) => value === initialType) ? initialType : 'website');
   const [url, setUrl] = useState('https://example.com');
   const [fg, setFg] = useState('#07111f');
   const [bg, setBg] = useState('#ffffff');
@@ -64,7 +71,7 @@ export default function QRCreator({
   async function save() {
     if (busy) return;
     setBusy(true);
-    setMessage('Saving campaign...');
+    setMessage(t('qr.actions.saving'));
     const response = await fetch('/api/qr', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -72,8 +79,8 @@ export default function QRCreator({
     });
     const data = await response.json().catch(() => ({}));
     setBusy(false);
-    if (!response.ok) return setMessage(data.error || 'Could not save this campaign.');
-    setMessage('Campaign saved. Opening the campaign editor...');
+    if (!response.ok) return setMessage(data.error || t('qr.builder.saveFailure'));
+    setMessage(t('qr.builder.saveSuccess'));
     router.push(`/dashboard/qr-codes/${data.id}`);
     router.refresh();
   }
@@ -82,33 +89,81 @@ export default function QRCreator({
     <div className="creator">
       <section className="card creator-form">
         <div className="sectionhead">
-          <div><div className="eyebrow">Campaign builder</div><h2>Create a measurable QR channel</h2></div>
-          <span className="pill">Dynamic</span>
+          <div>
+            <div className="eyebrow">{t('qr.builder.title')}</div>
+            <h2>{t('qr.builder.dynamicCampaign')}</h2>
+          </div>
+          <span className="pill">{t('qr.builder.dynamicCampaign')}</span>
         </div>
         <div className="formgrid">
-          <label className="field">Campaign name<input className="input" value={name} maxLength={100} onChange={(event) => { setName(event.target.value); setSlug(slugify(event.target.value)); }} /></label>
-          <label className="field">Business goal<select className="input" value={type} onChange={(event) => setType(event.target.value)}>{campaignTypes.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
-          <label className="field full">Destination URL<input className="input" type="url" value={url} onChange={(event) => setUrl(event.target.value)} /></label>
-          <label className="field full">Permanent short link<span className="slugrow"><span>/r/</span><input className="input" value={slug} minLength={3} maxLength={50} onChange={(event) => setSlug(slugify(event.target.value))} /></span></label>
-          {locations.length > 0 && <label className="field full">Location<select className="input" value={locationId} onChange={(event) => setLocationId(event.target.value)}><option value="">Workspace-wide campaign</option>{locations.map((location) => <option value={location.id} key={location.id}>{location.name}</option>)}</select></label>}
-          <label className="field">Foreground<input className="colorinput" type="color" value={fg} onChange={(event) => setFg(event.target.value)} /></label>
-          <label className="field">Background<input className="colorinput" type="color" value={bg} onChange={(event) => setBg(event.target.value)} /></label>
+          <label className="field">
+            {t('qr.builder.campaignLabel')}
+            <input
+              className="input"
+              value={name}
+              maxLength={100}
+              onChange={(event) => {
+                setName(event.target.value);
+                setSlug(slugify(event.target.value));
+              }}
+            />
+          </label>
+          <label className="field">
+            {t('qr.builder.businessGoal')}
+            <select className="input" value={type} onChange={(event) => setType(event.target.value)}>
+              {campaignTypes.map(({ value, labelKey }) => (
+                <option key={value} value={value}>
+                  {t(labelKey)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field full">
+            {t('qr.builder.destinationUrl')}
+            <input className="input" type="url" value={url} onChange={(event) => setUrl(event.target.value)} />
+          </label>
+          <label className="field full">
+            {t('qr.library.permanentLink')}
+            <span className="slugrow"><span>/r/</span><input className="input" value={slug} minLength={3} maxLength={50} onChange={(event) => setSlug(slugify(event.target.value))} /></span>
+          </label>
+          {locations.length > 0 && <label className="field full">
+            {t('qr.builder.locationTitle')}
+            <select className="input" value={locationId} onChange={(event) => setLocationId(event.target.value)}>
+              <option value="">{t('qr.builder.workspaceWide')}</option>
+              {locations.map((location) => <option value={location.id} key={location.id}>{location.name}</option>)}
+            </select>
+          </label>}
+          <label className="field">
+            {t('qr.builder.foreground')}
+            <input className="colorinput" type="color" value={fg} onChange={(event) => setFg(event.target.value)} />
+          </label>
+          <label className="field">
+            {t('qr.builder.background')}
+            <input className="colorinput" type="color" value={bg} onChange={(event) => setBg(event.target.value)} />
+          </label>
         </div>
-        <div className="actions"><button className="btn" type="button" disabled={busy || slug.length < 3} onClick={save}>{busy ? 'Saving...' : 'Save campaign'}</button><button className="btn secondary" type="button" onClick={download}>Download preview</button></div>
+        <div className="actions">
+          <button className="btn" type="button" disabled={busy || slug.length < 3} onClick={save}>
+            {busy ? t('qr.builder.saving') : t('qr.builder.saveCampaign')}
+          </button>
+          <button className="btn secondary" type="button" onClick={download}>
+            {t('qr.builder.download')}
+          </button>
+        </div>
         {message && <p className="notice" role="status">{message}</p>}
       </section>
       <aside className="card preview-panel">
-        <span className="pill">Live preview</span>
+        <span className="pill">{t('qr.builder.dynamicCampaign')}</span>
         <div className="qrbox"><canvas ref={canvas} /></div>
         <div style={{ width: '100%', display: 'grid', gap: '8px', textAlign: 'left' }}>
-          <span className="muted small">QR points to:</span>
+          <span className="muted small">{t('qr.qrToLabel')}</span>
           <a className="codeurl" href={dynamicUrl} target="_blank" rel="noopener noreferrer">
             {dynamicUrl}
           </a>
-          <span className="muted small">Redirects to:</span>
-          <code>{url || 'No destination set yet.'}</code>
+          <span className="muted small">{t('qr.redirectsToLabel')}</span>
+          <code>{url || t('qr.noDestination')}</code>
         </div>
-        <p className="muted small">The printed QR stays permanent. Change the destination later without replacing it.</p>
+        <p className="muted small">{t('qr.permanentMessage')}</p>
       </aside>
     </div>
   );

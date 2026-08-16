@@ -2,6 +2,7 @@
 
 import { FormEvent, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useI18n } from '@/components/i18n-provider';
 import {
   getBlueprintTemplate,
   type GrowthBlueprintTemplate,
@@ -51,11 +52,16 @@ function fromChecklistLines(value: string): string[] {
     .filter((item) => item.length > 0);
 }
 
-function pickTemplate(template_key: string): GrowthBlueprintTemplate | undefined {
-  return getBlueprintTemplate(template_key);
+function pickTemplate(templateKey: string): GrowthBlueprintTemplate | undefined {
+  return getBlueprintTemplate(templateKey);
+}
+
+function pickStatusLabel(t: (key: string) => string, value: string) {
+  return t(`blueprint.status.${normalizeStatus(value)}`);
 }
 
 export default function BlueprintManager({ instances, canManage }: BlueprintManagerProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const [busy, setBusy] = useState('');
   const [search, setSearch] = useState('');
@@ -111,9 +117,9 @@ export default function BlueprintManager({ instances, canManage }: BlueprintMana
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setErrorMessage(body.error || 'Could not create the blueprint.');
+        setErrorMessage(body.error || t('blueprint.createFailed'));
       } else {
-        setMessage(`“${templateName}” added to Workspace Playbooks.`);
+        setMessage(t('blueprint.createSuccess').replace('{name}', templateName));
         playbooksRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         playbooksRef.current?.focus();
         router.refresh();
@@ -135,9 +141,9 @@ export default function BlueprintManager({ instances, canManage }: BlueprintMana
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setErrorMessage(body.error || 'Could not update the blueprint.');
+        setErrorMessage(body.error || t('blueprint.saveFailed'));
       } else {
-        setMessage('Blueprint status updated.');
+        setMessage(t('blueprint.statusUpdated'));
         router.refresh();
       }
     } finally {
@@ -145,10 +151,10 @@ export default function BlueprintManager({ instances, canManage }: BlueprintMana
     }
   }
 
-function beginEdit(instance: BlueprintInstance) {
-  const checklist = parseChecklist(instance.configuration);
-  setEditingId(instance.id);
-  setEditingName(instance.name);
+  function beginEdit(instance: BlueprintInstance) {
+    const checklist = parseChecklist(instance.configuration);
+    setEditingId(instance.id);
+    setEditingName(instance.name);
     setEditingStatus(normalizeStatus(instance.status));
     setEditingChecklist(toChecklistLines(checklist));
     setMessage('');
@@ -185,9 +191,9 @@ function beginEdit(instance: BlueprintInstance) {
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setErrorMessage(body.error || 'Could not save the blueprint.');
+        setErrorMessage(body.error || t('blueprint.saveFailed'));
       } else {
-        setMessage('Playbook changes saved.');
+        setMessage(t('blueprint.saved'));
         cancelEdit();
         router.refresh();
       }
@@ -199,7 +205,7 @@ function beginEdit(instance: BlueprintInstance) {
   async function remove(instance: BlueprintInstance, event: FormEvent) {
     event.preventDefault();
 
-    if (!window.confirm('Delete this playbook? This removes this workspace instance and cannot be undone.')) return;
+    if (!window.confirm(t('blueprint.deleteConfirmation'))) return;
 
     setBusy(`${instance.id}:delete`);
     clearToast();
@@ -212,9 +218,9 @@ function beginEdit(instance: BlueprintInstance) {
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setErrorMessage(body.error || 'Could not delete the playbook.');
+        setErrorMessage(body.error || t('blueprint.deleteFailed'));
       } else {
-        setMessage('Playbook deleted.');
+        setMessage(t('blueprint.deleted'));
         if (editingId === instance.id) {
           cancelEdit();
         }
@@ -241,34 +247,34 @@ function beginEdit(instance: BlueprintInstance) {
       <div className="card">
         <div className="sectionhead">
           <div>
-            <div className="eyebrow">Template discovery</div>
-            <h2>Growth blueprint library</h2>
-            <p className="muted">Search by name or outcome and filter by industry or expected result.</p>
+            <div className="eyebrow">{t('blueprint.librarySection')}</div>
+            <h2>{t('blueprint.title')}</h2>
+            <p className="muted">{t('blueprint.subtitle')}</p>
           </div>
           <div className="actions">
-            <button className="btn secondary" disabled={!isFiltered} onClick={clearFilters}>
-              Clear filters
+            <button className="btn secondary" disabled={!isFiltered} onClick={clearFilters} type="button">
+              {t('blueprint.clearFilters')}
             </button>
           </div>
         </div>
 
         <section className="libraryfilters">
           <input
-            aria-label="Search growth blueprints"
+            aria-label={t('blueprint.searchLabel')}
             className="input"
             name="search"
-            placeholder="Search by name or outcome"
+            placeholder={t('blueprint.searchPlaceholder')}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
           <select
-            aria-label="Filter by industry"
+            aria-label={t('blueprint.filterIndustryLabel')}
             className="input"
             name="industry"
             value={industryFilter}
             onChange={(event) => setIndustryFilter(event.target.value)}
           >
-            <option value="">All industries</option>
+            <option value="">{t('blueprint.allIndustries')}</option>
             {industries.map((industry) => (
               <option key={industry} value={industry}>
                 {industry}
@@ -276,13 +282,13 @@ function beginEdit(instance: BlueprintInstance) {
             ))}
           </select>
           <select
-            aria-label="Filter by outcome"
+            aria-label={t('blueprint.filterOutcomeLabel')}
             className="input"
             name="outcome"
             value={outcomeFilter}
             onChange={(event) => setOutcomeFilter(event.target.value)}
           >
-            <option value="">All outcomes</option>
+            <option value="">{t('blueprint.allOutcomes')}</option>
             {outcomes.map((outcome) => (
               <option key={outcome} value={outcome}>
                 {outcome}
@@ -301,19 +307,20 @@ function beginEdit(instance: BlueprintInstance) {
             <ul>{template.items.map((item) => <li key={item}>{item}</li>)}</ul>
             {canManage && (
               <button className="btn" disabled={Boolean(busy)} onClick={() => create(template.key, template.name)}>
-                {busy === template.key ? 'Creating...' : 'Use blueprint'}
+                {busy === template.key ? t('common.creating') : t('blueprint.createLabel')}
               </button>
             )}
           </article>
         ))}
-        {!templates.length ? <p className="muted">No blueprints match your filters.</p> : null}
+
+        {!templates.length ? <p className="muted">{t('blueprint.noBlueprints')}</p> : null}
       </section>
 
       <section className="card table-card" ref={playbooksRef} tabIndex={-1}>
         <div className="sectionhead">
           <div>
-            <h2>Workspace playbooks</h2>
-            <p className="muted">Each instance is independently configurable and scoped to this workspace.</p>
+            <h2>{t('blueprint.workspacePlaybooks')}</h2>
+            <p className="muted">{t('blueprint.playbooksDescription')}</p>
           </div>
         </div>
 
@@ -322,10 +329,10 @@ function beginEdit(instance: BlueprintInstance) {
         {instances.length ? (
           <div className="data-table">
             <div className="data-row data-head">
-              <span>Name</span>
-              <span>Template</span>
-              <span>Status</span>
-              <span>Actions</span>
+              <span>{t('blueprint.instanceName')}</span>
+              <span>{t('blueprint.instanceTemplate')}</span>
+              <span>{t('blueprint.instanceStatus')}</span>
+              <span>{t('blueprint.instanceActions')}</span>
             </div>
             {instances.map((instance) => {
               const template = instanceTemplates.get(instance.template_key);
@@ -338,11 +345,13 @@ function beginEdit(instance: BlueprintInstance) {
                   <div className="data-row">
                     <span>
                       <b>{instance.name}</b>
-                      <small>{template ? template.name : instance.template_key.replaceAll('-', ' ')}</small>
+                      <small>
+                        {t('blueprint.createdOn')} {new Date(instance.created_at).toLocaleDateString()}
+                      </small>
                     </span>
-                    <span>{template ? template.name : instance.template_key.replaceAll('-', ' ')}</span>
+                    <span>{template ? template.name : instance.template_key}</span>
                     <span>
-                      <span className={`status ${currentStatus}`}>{currentStatus}</span>
+                      <span className={`status ${currentStatus}`}>{pickStatusLabel(t, currentStatus)}</span>
                     </span>
                     <span className="rowactions">
                       <select
@@ -353,57 +362,59 @@ function beginEdit(instance: BlueprintInstance) {
                       >
                         {blueprintStatuses.map((status) => (
                           <option key={status} value={status}>
-                            {status}
+                            {pickStatusLabel(t, status)}
                           </option>
                         ))}
                       </select>
                       {canManage ? (
                         <>
-                          <button className="mini" onClick={() => beginEdit(instance)} disabled={busy !== ''}>
-                            Configure
+                          <button className="mini" onClick={() => beginEdit(instance)} disabled={busy !== ''} type="button">
+                            {t('blueprint.configure')}
                           </button>
                           <form onSubmit={(event) => remove(instance, event)} style={{ margin: 0 }}>
                             <button className="mini danger" type="submit" disabled={busy !== ''}>
-                              Delete
+                              {t('blueprint.delete')}
                             </button>
                           </form>
                         </>
                       ) : null}
                     </span>
                   </div>
+
                   {isEditing ? (
                     <div className="blueprint-editor-row" ref={editorRef}>
                       <div className="card editcard">
                         <div className="sectionhead">
                           <div>
-                            <h3>Configure playbook</h3>
-                            <p className="muted">Editing: {instance.name}</p>
+                            <h3>{t('blueprint.configureHeading')}</h3>
+                            <p className="muted">{t('blueprint.configureMessage').replace('{name}', instance.name)}</p>
                           </div>
                         </div>
 
                         <div className="formgrid">
                           <label className="field">
-                            <span>Playbook name</span>
+                            <span>{t('blueprint.blueprintName')}</span>
                             <input
                               className="input"
                               value={editingName}
                               onChange={(event) => setEditingName(event.target.value)}
-                              aria-label="Playbook name"
+                              aria-label={t('blueprint.blueprintName')}
                               disabled={busy === `${instance.id}:save`}
                             />
                           </label>
+
                           <label className="field">
-                            <span>Status</span>
+                            <span>{t('blueprint.statusLabel')}</span>
                             <select
                               className="input"
                               value={editingStatus}
                               onChange={(event) => setEditingStatus(event.target.value as BlueprintStatus)}
-                              aria-label="Playbook status"
+                              aria-label={t('blueprint.statusLabel')}
                               disabled={busy === `${instance.id}:save`}
                             >
                               {blueprintStatuses.map((status) => (
                                 <option key={status} value={status}>
-                                  {status}
+                                  {pickStatusLabel(t, status)}
                                 </option>
                               ))}
                             </select>
@@ -412,16 +423,16 @@ function beginEdit(instance: BlueprintInstance) {
 
                         <div className="template-context">
                           <p>
-                            <strong>Template:</strong> {template?.name ?? instance.template_key}
+                            <strong>{t('blueprint.templateLabel')}</strong> {template?.name ?? instance.template_key}
                           </p>
                           <p>
-                            <strong>Outcome:</strong> {template?.outcome ?? 'Unknown'}
+                            <strong>{t('blueprint.outcomeLabel')}</strong> {template?.outcome ?? t('blueprint.unknownTemplate')}
                           </p>
                           <p>
-                            <strong>Industry:</strong> {template?.industry ?? 'Unknown'}
+                            <strong>{t('blueprint.industryLabel')}</strong> {template?.industry ?? t('blueprint.unknownTemplate')}
                           </p>
                           <div>
-                            <strong>Recommended workflow steps</strong>
+                            <strong>{t('blueprint.recommendationLabel')}</strong>
                             <ul>
                               {(template?.items ?? configuration).map((item) => (
                                 <li key={item}>{item}</li>
@@ -431,24 +442,29 @@ function beginEdit(instance: BlueprintInstance) {
                         </div>
 
                         <label className="field full">
-                          <span>Checklist/workflow steps</span>
+                          <span>{t('blueprint.checklistLabel')}</span>
                           <textarea
                             className="input"
                             value={editingChecklist}
                             onChange={(event) => setEditingChecklist(event.target.value)}
                             rows={6}
-                            aria-label="Checklist and workflow steps"
+                            aria-label={t('blueprint.checklistLabel')}
                             disabled={busy === `${instance.id}:save`}
-                            placeholder="Add one step per line"
+                            placeholder={t('blueprint.checklistPlaceholder')}
                           />
                         </label>
 
                         <div className="actions">
                           <button className="btn" onClick={() => save(instance)} disabled={busy === `${instance.id}:save`}>
-                            {busy === `${instance.id}:save` ? 'Saving...' : 'Save changes'}
+                            {busy === `${instance.id}:save` ? t('common.saving') : t('blueprint.savePlaybook')}
                           </button>
-                          <button className="btn secondary" type="button" onClick={cancelEdit} disabled={busy === `${instance.id}:save`}>
-                            Cancel
+                          <button
+                            className="btn secondary"
+                            type="button"
+                            onClick={cancelEdit}
+                            disabled={busy === `${instance.id}:save`}
+                          >
+                            {t('blueprint.cancel')}
                           </button>
                         </div>
                       </div>
@@ -459,7 +475,7 @@ function beginEdit(instance: BlueprintInstance) {
             })}
           </div>
         ) : (
-          <p className="muted">No blueprint instances yet. Choose a template above to create one.</p>
+          <p className="muted">{t('blueprint.notConfigured')}</p>
         )}
       </section>
     </div>

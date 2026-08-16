@@ -1,2 +1,19 @@
 import Link from 'next/link';
-export default function NotFound() { return <main className="authpage"><section className="card authcard empty"><div className="emptyicon">404</div><h1>That resource is not here.</h1><p className="muted">It may have been moved, archived, or outside your workspace.</p><Link className="btn" href="/dashboard">Return to dashboard</Link></section></main>; }
+import { getServerI18n } from '@/lib/i18n/page';
+
+export default async function NotFound() {
+  const { t } = await getServerI18n();
+
+  return (
+    <main className="authpage">
+      <section className="card authcard empty">
+        <div className="emptyicon">404</div>
+        <h1>{t('errors.notFoundTitle')}</h1>
+        <p className="muted">{t('errors.notFoundMessage')}</p>
+        <Link className="btn" href="/dashboard">
+          {t('errors.returnDashboard')}
+        </Link>
+      </section>
+    </main>
+  );
+}

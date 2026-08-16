@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import QRCode from 'qrcode';
+import { useI18n } from '@/components/i18n-provider';
 
 export default function QREditor({
   code,
@@ -13,6 +14,7 @@ export default function QREditor({
   locations: { id: string; name: string }[];
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [name, setName] = useState(code.name);
   const [destinationUrl, setDestinationUrl] = useState(code.destination_url);
   const [status, setStatus] = useState(code.status);
@@ -54,7 +56,7 @@ export default function QREditor({
 
   async function save() {
     setBusy(true);
-    setMessage('Saving changes...');
+    setMessage(t('common.saving'));
     const response = await fetch(`/api/qr/${code.id}`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
@@ -62,33 +64,39 @@ export default function QREditor({
     });
     const body = await response.json().catch(() => ({}));
     setBusy(false);
-    setMessage(response.ok ? 'Campaign updated. Destination changes are live now.' : body.error || 'Could not save campaign.');
+    setMessage(response.ok ? t('qr.library.messageSave') : body.error || t('qr.actions.updateMessage'));
     if (response.ok) router.refresh();
+  }
+
+  function formatStatus(value: string) {
+    if (value === 'active') return t('dashboard.qrLibrary.active');
+    if (value === 'paused') return t('dashboard.qrLibrary.paused');
+    return value;
   }
 
   return (
     <section className="card editcard">
-      <div className="sectionhead"><div><div className="eyebrow">Permanent campaign</div><h2>{code.name}</h2></div><span className={`status ${status}`}>{status}</span></div>
+      <div className="sectionhead"><div><div className="eyebrow">{t('qr.library.qrPreviewTitle')}</div><h2>{code.name}</h2></div><span className={`status ${status}`}>{formatStatus(status)}</span></div>
       <div className="formgrid">
-        <label className="field">Campaign name<input className="input" value={name} onChange={(event) => setName(event.target.value)} /></label>
-        <label className="field">Status<select className="input" value={status} onChange={(event) => setStatus(event.target.value)}><option value="active">Active</option><option value="paused">Paused</option></select></label>
-        <label className="field full">Destination URL<input className="input" type="url" value={destinationUrl} onChange={(event) => setDestinationUrl(event.target.value)} /></label>
-        <label className="field full">Location<select className="input" value={locationId} onChange={(event) => setLocationId(event.target.value)}><option value="">Workspace-wide campaign</option>{locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}</select></label>
-        <label className="field">Foreground<input className="colorinput" type="color" value={fg} onChange={(event) => setFg(event.target.value)} /></label>
-        <label className="field">Background<input className="colorinput" type="color" value={bg} onChange={(event) => setBg(event.target.value)} /></label>
+        <label className="field">{t('qr.builder.campaignLabel')}<input className="input" value={name} onChange={(event) => setName(event.target.value)} /></label>
+        <label className="field">{t('common.status')}<select className="input" value={status} onChange={(event) => setStatus(event.target.value)}><option value="active">{t('dashboard.qrLibrary.active')}</option><option value="paused">{t('dashboard.qrLibrary.paused')}</option></select></label>
+        <label className="field full">{t('qr.builder.destinationUrl')}<input className="input" type="url" value={destinationUrl} onChange={(event) => setDestinationUrl(event.target.value)} /></label>
+        <label className="field full">{t('qr.builder.locationTitle')}<select className="input" value={locationId} onChange={(event) => setLocationId(event.target.value)}><option value="">{t('qr.builder.workspaceWide')}</option>{locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}</select></label>
+        <label className="field">{t('qr.builder.foreground')}<input className="colorinput" type="color" value={fg} onChange={(event) => setFg(event.target.value)} /></label>
+        <label className="field">{t('qr.builder.background')}<input className="colorinput" type="color" value={bg} onChange={(event) => setBg(event.target.value)} /></label>
         <div className="field full">
-          <span>Permanent link</span>
+          <span>{t('qr.library.permanentLink')}</span>
           <a className="codeurl" href={shortLink} target="_blank" rel="noopener noreferrer">
             {shortLink}
           </a>
         </div>
       </div>
       <div className="preview-panel">
-        <span className="pill">Scannable QR preview</span>
+        <span className="pill">{t('qr.qrPreview')}</span>
         {qrImage ? (
           <a href={shortLink} target="_blank" rel="noopener noreferrer">
             <img
-              alt={`Permanent QR for ${code.slug}`}
+              alt={`${t('qr.library.qrPreview')}: ${code.slug}`}
               src={qrImage}
               width={280}
               height={280}
@@ -97,19 +105,19 @@ export default function QREditor({
           </a>
         ) : (
           <div className="qrbox">
-            <small className="muted">Generating QR...</small>
+            <small className="muted">{t('qr.actions.generatingQr')}</small>
           </div>
         )}
         <div className="actions">
           <a className="btn secondary" href={shortLink} target="_blank" rel="noopener noreferrer">
-            Test link
+            {t('qr.actions.test')}
           </a>
           <button className="btn" type="button" onClick={downloadQr}>
-            Download QR
+            {t('qr.actions.download')}
           </button>
         </div>
       </div>
-      <div className="actions"><button className="btn" type="button" disabled={busy} onClick={save}>{busy ? 'Saving...' : 'Save changes'}</button><Link className="btn secondary" href="/dashboard/qr-codes">Back to library</Link></div>
+      <div className="actions"><button className="btn" type="button" disabled={busy} onClick={save}>{busy ? t('common.saving') : t('qr.actions.updateMessage') === 'Could not update this campaign.' ? t('qr.library.saveChanges') : t('qr.library.saveChanges')}</button><Link className="btn secondary" href="/dashboard/qr-codes">{t('dashboard.qrLibrary.openLibrary')}</Link></div>
       {message && <p className="notice" role="status">{message}</p>}
     </section>
   );

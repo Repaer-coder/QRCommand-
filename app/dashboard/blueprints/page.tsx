@@ -1,7 +1,44 @@
+import { getServerI18n } from '@/lib/i18n/page';
 import { redirect } from 'next/navigation';
 import DashboardSidebar from '@/components/dashboard-sidebar';
 import BlueprintManager from '@/components/blueprint-manager';
 import { hasEntitlement } from '@/lib/plans';
 import { createClient } from '@/lib/supabase/server';
 import { getWorkspaceContext, hasWorkspaceRole } from '@/lib/workspace';
-export default async function BlueprintsPage() { const supabase = await createClient(); const context = await getWorkspaceContext(supabase); if ('error' in context) return null; if (!hasEntitlement(context.organization.plan, 'blueprints.growth')) redirect('/dashboard/billing'); const { data } = await supabase.from('blueprint_instances').select('id,template_key,name,status,configuration,created_at').eq('organization_id', context.organization.id).order('created_at', { ascending: false }); return <div className="shell"><DashboardSidebar active="blueprints" userLabel={context.email} role={context.organization.role} workspaceName={context.organization.name} plan={context.organization.plan} /><main className="main"><div className="toprow"><div><div className="eyebrow">Reusable operating playbooks</div><h1>Growth blueprints</h1><p className="muted">Clone a proven business system into this workspace, then manage its lifecycle independently.</p></div></div><BlueprintManager instances={data ?? []} canManage={hasWorkspaceRole(context.organization.role, 'manager')} /></main></div>; }
+
+export default async function BlueprintsPage() {
+  const supabase = await createClient();
+  const context = await getWorkspaceContext(supabase);
+  const { t } = await getServerI18n();
+
+  if ('error' in context) return null;
+  if (!hasEntitlement(context.organization.plan, 'blueprints.growth')) redirect('/dashboard/billing');
+
+  const { data } = await supabase
+    .from('blueprint_instances')
+    .select('id,template_key,name,status,configuration,created_at')
+    .eq('organization_id', context.organization.id)
+    .order('created_at', { ascending: false });
+
+  return (
+    <div className="shell">
+      <DashboardSidebar
+        active="blueprints"
+        userLabel={context.email}
+        role={context.organization.role}
+        workspaceName={context.organization.name}
+        plan={context.organization.plan}
+      />
+      <main className="main">
+        <div className="toprow">
+          <div>
+            <div className="eyebrow">{t('blueprints.reusableHeadline')}</div>
+            <h1>{t('blueprints.title')}</h1>
+            <p className="muted">{t('blueprints.description')}</p>
+          </div>
+        </div>
+        <BlueprintManager instances={data ?? []} canManage={hasWorkspaceRole(context.organization.role, 'manager')} />
+      </main>
+    </div>
+  );
+}

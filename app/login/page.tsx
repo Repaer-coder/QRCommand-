@@ -12,10 +12,15 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+async function LoginLoadingFallback() {
+  const { t } = await getServerI18n();
+  return <div className="card authcard">{t('auth.loading')}</div>;
+}
+
 export default async function LoginPage() {
   return (
     <main className="authpage">
-      <Suspense fallback={<div className="card authcard">Loading secure sign in...</div>}>
+      <Suspense fallback={<LoginLoadingFallback />}>
         <AuthForm />
       </Suspense>
     </main>
