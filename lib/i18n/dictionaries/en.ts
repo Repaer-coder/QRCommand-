@@ -594,7 +594,11 @@ const en = {
     statusCompleted: 'completed',
   },
   blueprints: {
+    premiumGrowthSystems: 'Premium growth systems',
     title: 'Growth blueprint library',
+    subtitle: 'Ready-to-use growth systems built around proven customer journeys and measurable business outcomes.',
+    viewAll: 'View all blueprints',
+    configureBlueprint: 'Configure blueprint',
   },
   plans: {
     free: {

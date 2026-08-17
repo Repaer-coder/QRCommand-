@@ -81,9 +81,6 @@ export default function DashboardSidebar({
           );
         })}
       </nav>
-      <div className="sidebar-mobile-locale">
-        <LocaleSelector compact />
-      </div>
       <div className="sidebar-account">
         <span className="account-avatar">{userLabel.slice(0, 1).toUpperCase()}</span>
         <span className="account-copy">
