@@ -436,3 +436,57 @@ textarea.input { resize: vertical; }
   background: #0d1f2b;
 }
 
+
+/* Force sidebar account controls to stack vertically */
+.sidebar {
+  overflow-x: hidden;
+}
+
+.sidebar-account {
+  grid-template-columns: 34px minmax(0, 1fr);
+  width: 100%;
+  min-width: 0;
+}
+
+.sidebar-account .locale-selector {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  margin-top: 10px;
+}
+
+.sidebar-account .locale-selector-label {
+  display: block;
+  width: 100%;
+}
+
+.sidebar-account .locale-selector-select {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.sidebar-account .legal-links-compact {
+  grid-column: 1 / -1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.sidebar-account form {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.sidebar-account form .textbutton {
+  width: 100%;
+  text-align: left;
+}
+
