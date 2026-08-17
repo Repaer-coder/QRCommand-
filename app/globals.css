@@ -387,3 +387,52 @@ textarea.input { resize: vertical; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
 }
+
+/* Sidebar language selector */
+.sidebar-account .locale-selector {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.sidebar-account .locale-selector-label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.sidebar-account .locale-selector-select {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0 34px 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  outline: none;
+  color: var(--text);
+  background: #0d1f2b;
+  font-size: 0.78rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.sidebar-account .locale-selector-select:hover {
+  border-color: #4b7584;
+  background: #132936;
+}
+
+.sidebar-account .locale-selector-select:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(102, 227, 164, 0.12);
+}
+
+.sidebar-account .locale-selector-select option {
+  color: var(--text);
+  background: #0d1f2b;
+}
+
