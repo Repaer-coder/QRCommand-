@@ -28,7 +28,7 @@ export default async function Dashboard() {
   const context = await getWorkspaceContext(supabase);
   if ('error' in context) return null;
 
-  const snapshot = await getAnalyticsSnapshot(supabase, context.organization.id, 14);
+  const snapshot = await getAnalyticsSnapshot(supabase, context.organization.id, 14).catch((error) => { console.error('Dashboard analytics failed:', error); return { generatedAt: new Date().toISOString(), periodDays: 14, totals: { campaigns: 0, activeCampaigns: 0, scans: 0, periodScans: 0, locations: 0 }, daily: [], campaigns: [], devices: [], locations: [] }; });
   const recent = snapshot.campaigns.slice(0, 6);
 
   return (
